@@ -14,7 +14,7 @@ const createForumURL = '/api/forum/v1/create'
 const createSectionURL = '/api/org/v1/sections/add'
 const getForumURL = '/api/forum/v1/read'
 const categoryList = '/api/category/list';
-const requestPromise = require('request-promise');
+// Note: axios is already imported at line 2
 const tagsList = '/api/tags/list'
 const contextBasesTags = '/api/forum/tags'
 const utils = require('./utils')
@@ -30,8 +30,8 @@ const purgeTopicURL = '/api/topic/v1/purge/:tid'
 const banUserURL = '/api/user/v1/ban'
 const unbanUserURL = '/api/user/v1/unban'
 const createCatwithSubcatURL = '/api/create'
-const createSBForum= '/api/forum/v2/create';
-const getSBForum= '/api/forum/v2/read';
+const createSBForum = '/api/forum/v2/create';
+const getSBForum = '/api/forum/v2/read';
 const removeSBForum = '/api/forum/v2/remove';
 const createRelatedDiscussions = '/api/forum/v3/create';
 const privileges = require.main.require('./src/privileges');
@@ -95,7 +95,7 @@ var constants = {
   'incorrectCid': 'Category id ${cid} is not exists, Please use correct cid',
   'emptyDataFOrGroupsAndMembers': 'Groups and members should not be empty',
   'noGroupAddedMsg': '${group} was not added for the category id ${cid}, please add and try again.',
-  'emptyDataForGroups':'You have to pass both sbUid and sbUserName',
+  'emptyDataForGroups': 'You have to pass both sbUid and sbUserName',
   'pluginSettings': new Settings('fusionauth-oidc', '1.0.0', {
     // Default settings
     clientId: "",
@@ -111,7 +111,7 @@ var constants = {
 }
 
 
-async function createTopicAPI (req, res) {
+async function createTopicAPI(req, res) {
   var payload = { ...req.body.request }
   console.log('-----------payload ---------------', payload)
   payload.tags = payload.tags || []
@@ -142,7 +142,7 @@ async function createTopicAPI (req, res) {
     })
 }
 
-async function allTopicsByCategory (req, res) {
+async function allTopicsByCategory(req, res) {
   var payload = { ...req.body.request }
 
   axios
@@ -171,7 +171,7 @@ async function allTopicsByCategory (req, res) {
     })
 }
 
-async function allPostsByTopic (req, res) {
+async function allPostsByTopic(req, res) {
   var payload = { ...req.body.request }
   console.log('--------------------', payload)
   axios
@@ -200,7 +200,7 @@ async function allPostsByTopic (req, res) {
     })
 }
 
-async function replyTopicAPI (req, res) {
+async function replyTopicAPI(req, res) {
   let { body } = req
 
   var payload = {
@@ -239,7 +239,7 @@ async function replyTopicAPI (req, res) {
     })
 }
 
-async function deletePostAPI (req, res) {
+async function deletePostAPI(req, res) {
   let { body } = req
   posts.delete(req.params.pid, req.user.uid, function (error) {
     if (error) {
@@ -264,7 +264,7 @@ async function deletePostAPI (req, res) {
   })
 }
 
-async function deleteTopicAPI (req, res) {
+async function deleteTopicAPI(req, res) {
   Topics.delete(req.params.tid, req.params._uid, function (error) {
     if (error) {
       let resObj = {
@@ -288,7 +288,7 @@ async function deleteTopicAPI (req, res) {
   })
 }
 
-async function purgeTopicAPI (req, res) {
+async function purgeTopicAPI(req, res) {
   Topics.purgePostsAndTopic(req.params.tid, req.params._uid, function (error) {
     if (error) {
       let resObj = {
@@ -312,7 +312,7 @@ async function purgeTopicAPI (req, res) {
   })
 }
 
-async function purgePostAPI (req, res) {
+async function purgePostAPI(req, res) {
   posts.purge(req.params.pid, req.user.uid, function (error) {
     if (error) {
       let resObj = {
@@ -336,7 +336,7 @@ async function purgePostAPI (req, res) {
   })
 }
 
-async function voteURLAPI (req, res) {
+async function voteURLAPI(req, res) {
   let { body } = req
 
   if (body.request.delta > 0) {
@@ -408,7 +408,7 @@ async function voteURLAPI (req, res) {
   }
 }
 
-async function banUserAPI (req, res) {
+async function banUserAPI(req, res) {
   let { body } = req
 
   Users.bans.ban(
@@ -439,7 +439,7 @@ async function banUserAPI (req, res) {
   )
 }
 
-async function unbanUserAPI (req, res) {
+async function unbanUserAPI(req, res) {
   let { body } = req
 
   Users.bans.unban(body.request.uid, function (error) {
@@ -465,7 +465,7 @@ async function unbanUserAPI (req, res) {
   })
 }
 
-async function setupOrgAPI (req, res) {
+async function setupOrgAPI(req, res) {
   let { body } = req
   var reqPrivileges = body.request.privileges
   return createCategory(body.request)
@@ -513,7 +513,7 @@ async function setupOrgAPI (req, res) {
     })
 }
 
-async function addSectionURL (req, res) {
+async function addSectionURL(req, res) {
   let { body } = req
   var reqPrivileges = body.request.privileges
   return addSection(body.request)
@@ -558,7 +558,7 @@ async function addSectionURL (req, res) {
     })
 }
 
-async function createForumAPI (req, res) {
+async function createForumAPI(req, res) {
   let { body } = req
   var reqPrivileges = body.request.privileges
 
@@ -685,7 +685,7 @@ async function createForumAPI (req, res) {
   }
 }
 
-async function getForumAPI (req, res) {
+async function getForumAPI(req, res) {
   let { body } = req
   return getForum(body.request)
     .then(forumResponse => {
@@ -712,7 +712,7 @@ async function getForumAPI (req, res) {
     })
 }
 
-async function createCatwithSubcat (req, res) {
+async function createCatwithSubcat(req, res) {
   let { body } = req
   return createCategory_check(body.request)
     .then(catResponse => {
@@ -769,7 +769,7 @@ async function createCatwithSubcat (req, res) {
     })
 }
 
-function commonObject (res, id, msgId, status, resCode, err, errmsg, data) {
+function commonObject(res, id, msgId, status, resCode, err, errmsg, data) {
   let resObj = null
   if (res === 0) {
     resObj = {
@@ -802,24 +802,24 @@ async function getListOfCategories(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-  if(isRequiredParamsMissing) {
+  if (isRequiredParamsMissing) {
     const cids = payload.cids;
     let allCategories = [];
-    for(let i = 0; i < cids.length; i++) {
-        try {
-          const url = constants.category+ '/' + cids[i];
-          const data = await util.getResponseData(req, url, categoryList, null, constants.get);
-          allCategories.push(data);
-            if (i === (cids.length -1)) {
-              const responseObj = await util.responseData(req, res, allCategories, null);
-              res.send(responseObj);
-            }
-        } catch(error) {
-          console.log({message: `Error while call the api`})
-          console.log({message: `Error message:  ${error.message}`})
-          util.generateError(req, res, error.message, 404);
+    for (let i = 0; i < cids.length; i++) {
+      try {
+        const url = constants.category + '/' + cids[i];
+        const data = await util.getResponseData(req, url, categoryList, null, constants.get);
+        allCategories.push(data);
+        if (i === (cids.length - 1)) {
+          const responseObj = await util.responseData(req, res, allCategories, null);
+          res.send(responseObj);
         }
+      } catch (error) {
+        console.log({ message: `Error while call the api` })
+        console.log({ message: `Error message:  ${error.message}` })
+        util.generateError(req, res, error.message, 404);
       }
+    }
   }
 }
 
@@ -828,20 +828,20 @@ async function getListOfCategories(req, res) {
  * @param {*} res
  * This method will tag name and cid and return list of topics that contains that tag name under particuler cid.
  */
-async function getTagsRelatedTopics(req,res) {
+async function getTagsRelatedTopics(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
   if (isRequiredParamsMissing) {
     try {
-      const url = constants.tags+ '/' + payload.tag;
+      const url = constants.tags + '/' + payload.tag;
       const data = await util.getResponseData(req, url, tagsList, null, constants.get);
       const releatedTopics = data.topics.filter(topic => payload.cid.includes(String(topic.cid)));
       const responseObj = await util.responseData(req, res, releatedTopics, null);
       res.send(responseObj);
-    } catch(error) {
-      console.log({message: `Error while call the api`})
-      console.log({message: `Error message:  ${error.message}`})
+    } catch (error) {
+      console.log({ message: `Error while call the api` })
+      console.log({ message: `Error message:  ${error.message}` })
       util.generateError(req, res, error.message, 500);
     }
   }
@@ -849,7 +849,7 @@ async function getTagsRelatedTopics(req,res) {
 
 
 
-async function getContextBasedTags (req, res) {
+async function getContextBasedTags(req, res) {
   const payload = { ...req.body.request }
   let resObj = {
     id: constants[contextBasesTags],
@@ -864,7 +864,7 @@ async function getContextBasedTags (req, res) {
 
     for (let i = 0; i < cids.length; i++) {
       try {
-        const url = constants.category+ '/' + cids[i];
+        const url = constants.category + '/' + cids[i];
         const data = await util.getResponseData(req, url, contextBasesTags, null, constants.get);
         allTopics.push(...data.topics)
         if (i === cids.length - 1) {
@@ -901,17 +901,17 @@ async function getContextBasedTags (req, res) {
  * @param {*} res
  * This method will take sunbird identifiers and return nodebb uid respectively.
  */
-async function getUserIds(req,res) {
+async function getUserIds(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
   if (isRequiredParamsMissing) {
     try {
       const userIds = await util.userDetailsByoAuth(payload.sbIdentifiers);
-      const data = {userIds:userIds};
+      const data = { userIds: userIds };
       const responseObj = await util.responseData(req, res, data, null);
       res.send(responseObj);
-    } catch(error) {
+    } catch (error) {
       util.generateError(req, res, error.message, 500);
     }
   }
@@ -923,68 +923,68 @@ async function getUserIds(req,res) {
  * @param  {} res
  * this the generalization of api for course and groups
  */
-async function relatedDiscussions (req, res) {
-    const reqPayload = { ...req.body.category };
-    const requiredParams = jsonConstants.requiredParams[req.route.path];
-    const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, reqPayload);
-    if (isRequiredParamsMissing) {
-          const payload = reqPayload;
-          // check: is both privileges and groups present
-         if (!_.isEmpty(payload.groups) && !_.isEmpty(payload.privileges)) {
-           util.generateError(req, res, jsonConstants.forumStrings.privilegeGroupErrorMsg, 400, jsonConstants.forumStrings.payloadError);
-          } else {
-            let finalResponse = {};
-            const body = {
-              parentCid: payload.pid || 0,
-              name: payload.name || constants.defaultCategory,
-              description: _.get(payload, 'description') 
-            };
-            const cdata = await Categories.create(body); // creating new category.
+async function relatedDiscussions(req, res) {
+  const reqPayload = { ...req.body.category };
+  const requiredParams = jsonConstants.requiredParams[req.route.path];
+  const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, reqPayload);
+  if (isRequiredParamsMissing) {
+    const payload = reqPayload;
+    // check: is both privileges and groups present
+    if (!_.isEmpty(payload.groups) && !_.isEmpty(payload.privileges)) {
+      util.generateError(req, res, jsonConstants.forumStrings.privilegeGroupErrorMsg, 400, jsonConstants.forumStrings.payloadError);
+    } else {
+      let finalResponse = {};
+      const body = {
+        parentCid: payload.pid || 0,
+        name: payload.name || constants.defaultCategory,
+        description: _.get(payload, 'description')
+      };
+      const cdata = await Categories.create(body); // creating new category.
 
-           if(cdata) {
-              const context = payload.context;
-              if(!_.isEmpty(context)) {
-                finalResponse['forums'] = await addContext(context, cdata.cid); // adding category with the context
-                // check: is copyFromCategory present in privileges object, if yes copy prilileges from that category and apply on new category
-                if(payload.privileges && !_.isEmpty(payload.privileges.copyFromCategory)){
-                    const result = await Categories.copyPrivilegesFrom(payload.privileges.copyFromCategory, cdata.cid);
-                    const members = await util.getMembers(cdata.cid);
-                    finalResponse['groups'] = members;
-                    try{
-                      // check: is subcategories present.
-                      const subCategory = await checkSubcategories(payload.subcategories, cdata.cid);
-                      finalResponse.subcategories = subCategory;
-                      const responseObj = await util.responseData(req, res, finalResponse, null);
-                      res.send(responseObj);
-                    } catch(error) {
-                        util.generateError(req, res, error.message, 500);
-                    }
-                } else if(!_.isEmpty(payload.groups)) { // check: is groups present. if yes add users into group and attch group to catgory
-                    try{
-                      const addPrivileges = await util.groupsAndPrivileges(cdata.cid, payload.groups);
-                      const members = await util.getMembers(cdata.cid);
-                      finalResponse['groups'] = members;
-                      const subCategory = await checkSubcategories(payload.subcategories, cdata.cid);
-                      finalResponse.subcategories = subCategory;
-                      const responseObj = await util.responseData(req, res, finalResponse, null);
-                      res.send(responseObj);
-                    } catch(error) {
-                      util.generateError(req, res, error.message, 500);
-                    }
-                } else {
-                    const responseObj = await util.responseData(req, res, finalResponse, null);
-                    res.send(responseObj);
-                }
-              } else {
-                  util.generateError(req, res, jsonConstants.forumStrings.contextError, 400);
-              }              
+      if (cdata) {
+        const context = payload.context;
+        if (!_.isEmpty(context)) {
+          finalResponse['forums'] = await addContext(context, cdata.cid); // adding category with the context
+          // check: is copyFromCategory present in privileges object, if yes copy prilileges from that category and apply on new category
+          if (payload.privileges && !_.isEmpty(payload.privileges.copyFromCategory)) {
+            const result = await Categories.copyPrivilegesFrom(payload.privileges.copyFromCategory, cdata.cid);
+            const members = await util.getMembers(cdata.cid);
+            finalResponse['groups'] = members;
+            try {
+              // check: is subcategories present.
+              const subCategory = await checkSubcategories(payload.subcategories, cdata.cid);
+              finalResponse.subcategories = subCategory;
+              const responseObj = await util.responseData(req, res, finalResponse, null);
+              res.send(responseObj);
+            } catch (error) {
+              util.generateError(req, res, error.message, 500);
+            }
+          } else if (!_.isEmpty(payload.groups)) { // check: is groups present. if yes add users into group and attch group to catgory
+            try {
+              const addPrivileges = await util.groupsAndPrivileges(cdata.cid, payload.groups);
+              const members = await util.getMembers(cdata.cid);
+              finalResponse['groups'] = members;
+              const subCategory = await checkSubcategories(payload.subcategories, cdata.cid);
+              finalResponse.subcategories = subCategory;
+              const responseObj = await util.responseData(req, res, finalResponse, null);
+              res.send(responseObj);
+            } catch (error) {
+              util.generateError(req, res, error.message, 500);
+            }
           } else {
-              console.log('category creation failed')
-              console.log('Error is', cdata.message)
-              util.generateError(req, res, jsonConstants.forumStrings.categoryError, 500);
+            const responseObj = await util.responseData(req, res, finalResponse, null);
+            res.send(responseObj);
           }
+        } else {
+          util.generateError(req, res, jsonConstants.forumStrings.contextError, 400);
+        }
+      } else {
+        console.log('category creation failed')
+        console.log('Error is', cdata.message)
+        util.generateError(req, res, jsonConstants.forumStrings.categoryError, 500);
       }
     }
+  }
 }
 
 /**
@@ -998,26 +998,26 @@ async function addContext(context, cid) {
     context.forEach(async (contextData, i) => {
       const addPropertyInCategory = await Categories.setCategoryField(cid, 'contextId', contextData.identifier);
       // Preparing request object
-        let mapObj = {
-          sbIdentifier: contextData.identifier,
-          sbType: contextData.type,
-          cid: cid
-        }
-        client.save(mapObj);
-        const mappedCids = await client.getContext(contextData);
-        const listOfCids = mappedCids.length > 0 ? mappedCids.map(forum => forum.cid) : [];
-        
-        // Preparing the response object
-        const mapResObj = {
-          "sbType": contextData.type,
-          "sbIdentifier": contextData.identifier,
-          "newCid": cid,
-          "cids": listOfCids
-        }
-        forumIds.push(mapResObj);
-        if(i === (context.length - 1)){ 
-          resolve(forumIds)
-        }
+      let mapObj = {
+        sbIdentifier: contextData.identifier,
+        sbType: contextData.type,
+        cid: cid
+      }
+      client.save(mapObj);
+      const mappedCids = await client.getContext(contextData);
+      const listOfCids = mappedCids.length > 0 ? mappedCids.map(forum => forum.cid) : [];
+
+      // Preparing the response object
+      const mapResObj = {
+        "sbType": contextData.type,
+        "sbIdentifier": contextData.identifier,
+        "newCid": cid,
+        "cids": listOfCids
+      }
+      forumIds.push(mapResObj);
+      if (i === (context.length - 1)) {
+        resolve(forumIds)
+      }
     });
   });
 }
@@ -1030,11 +1030,11 @@ async function addContext(context, cid) {
 async function checkSubcategories(subcategories, cid) {
   console.log('add checkSubcategories')
   return new Promise(async (resolve, reject) => {
-    if(!_.isEmpty(subcategories)) {
+    if (!_.isEmpty(subcategories)) {
       try {
         const addingSubcategory = await addSubcategories(subcategories, cid);
         resolve(addingSubcategory)
-      } catch(error) {
+      } catch (error) {
         reject(error)
       }
     } else {
@@ -1049,56 +1049,56 @@ async function checkSubcategories(subcategories, cid) {
  * This method will create new categories. based on what ever the categories present in subcategories array: Generalaiation.  
  */
 async function addSubcategories(subCategories, pid) {
-  let subCategoryResponse =[];
+  let subCategoryResponse = [];
   return new Promise(async (resolve, reject) => {
-      for (let i = 0; i<subCategories.length; i++){ 
+    for (let i = 0; i < subCategories.length; i++) {
       let privilegesError;
-     if (!_.isEmpty(subCategories[i].groups) && !_.isEmpty(subCategories[i].privileges)) {
+      if (!_.isEmpty(subCategories[i].groups) && !_.isEmpty(subCategories[i].privileges)) {
         privilegesError = new Error(jsonConstants.forumStrings.subCategoryError);
         privilegesError.statusCode = 400;
         reject(privilegesError);
       } else {
-          const categoryObj = {
-            name: subCategories[i].name,
-            parentCid: pid,
-            description: _.get(subCategories[i], 'description') 
-          };
+        const categoryObj = {
+          name: subCategories[i].name,
+          parentCid: pid,
+          description: _.get(subCategories[i], 'description')
+        };
 
-          const creatSubCategory =  await Categories.create(categoryObj);
+        const creatSubCategory = await Categories.create(categoryObj);
 
-          const data = {
-            name: creatSubCategory.name,
-            cid: creatSubCategory.cid,
-            pid: pid,
-            groups: []
-          };
+        const data = {
+          name: creatSubCategory.name,
+          cid: creatSubCategory.cid,
+          pid: pid,
+          groups: []
+        };
 
-          // Mapping the context if exists for sub category 
-          if(!_.isEmpty(subCategories[i].context)) {
-            subCategories[i].context.forEach(async (context) => {
-              const addPropertyInCategory = await Categories.setCategoryField(creatSubCategory.cid, 'contextId', context.identifier);
-              const contextObj = {
-                "sbType": context.type,
-                "sbIdentifier": context.identifier,
-                "cid": creatSubCategory.cid
-              }
-              client.save(contextObj);
-            })
-          }
-          
-          //  checking for privileges 
-          if(subCategories[i].privileges && subCategories[i].privileges.copyFromParent){
-            await Categories.copyPrivilegesFrom(pid, creatSubCategory.cid);
-          }else if(!_.isEmpty(subCategories[i].groups)) {
-            await util.groupsAndPrivileges(creatSubCategory.cid, subCategories[i].groups);
-          }
-          data['groups'] = await util.getMembers(creatSubCategory.cid);
-          if(!_.isEmpty(data.groups)) {
-            subCategoryResponse.push(data);
-            if(i === (subCategories.length -1)) {
-              resolve(subCategoryResponse)
+        // Mapping the context if exists for sub category 
+        if (!_.isEmpty(subCategories[i].context)) {
+          subCategories[i].context.forEach(async (context) => {
+            const addPropertyInCategory = await Categories.setCategoryField(creatSubCategory.cid, 'contextId', context.identifier);
+            const contextObj = {
+              "sbType": context.type,
+              "sbIdentifier": context.identifier,
+              "cid": creatSubCategory.cid
             }
-          }         
+            client.save(contextObj);
+          })
+        }
+
+        //  checking for privileges 
+        if (subCategories[i].privileges && subCategories[i].privileges.copyFromParent) {
+          await Categories.copyPrivilegesFrom(pid, creatSubCategory.cid);
+        } else if (!_.isEmpty(subCategories[i].groups)) {
+          await util.groupsAndPrivileges(creatSubCategory.cid, subCategories[i].groups);
+        }
+        data['groups'] = await util.getMembers(creatSubCategory.cid);
+        if (!_.isEmpty(data.groups)) {
+          subCategoryResponse.push(data);
+          if (i === (subCategories.length - 1)) {
+            resolve(subCategoryResponse)
+          }
+        }
       }
     }
   })
@@ -1131,28 +1131,28 @@ async function addUsers(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];;
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-    if(isRequiredParamsMissing) {
-      const groupsList = payload.groups;
-      const sunbirdUsers = payload.members;
-      sunbirdUsers.forEach(async (user, index) => {
-        let nodebbUid = await db.getObjectField(constants.name + 'Id:uid', user.sbUid);
-        if(!nodebbUid) {
-          try {
-            nodebbUid = await util.createNewUser(user);
-          } catch(error) {
-            util.generateError(req, res, error.message, 400);
-            return false;
-          }
+  if (isRequiredParamsMissing) {
+    const groupsList = payload.groups;
+    const sunbirdUsers = payload.members;
+    sunbirdUsers.forEach(async (user, index) => {
+      let nodebbUid = await db.getObjectField(constants.name + 'Id:uid', user.sbUid);
+      if (!nodebbUid) {
+        try {
+          nodebbUid = await util.createNewUser(user);
+        } catch (error) {
+          util.generateError(req, res, error.message, 400);
+          return false;
         }
-        await util.addUsersInGroup(groupsList, nodebbUid);
-        if (index === (sunbirdUsers.length -1)) {
-          const userList = await util.getMembers(null, groupsList);
-          const result = { groups: userList };
-          const responseObj = await util.responseData(req, res, result, null);
-          res.send(responseObj);
-        }
-      }) 
-    }
+      }
+      await util.addUsersInGroup(groupsList, nodebbUid);
+      if (index === (sunbirdUsers.length - 1)) {
+        const userList = await util.getMembers(null, groupsList);
+        const result = { groups: userList };
+        const responseObj = await util.responseData(req, res, result, null);
+        res.send(responseObj);
+      }
+    })
+  }
 }
 
 /**
@@ -1183,38 +1183,38 @@ async function getContextUserGroups(req, res) {
  * This api will take cid and groups names and return list of users added in those groups for a category.
  */
 async function getContextGroupPriveleges(req, res) {
-  const payload = {...req.body.request};
+  const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-  if (isRequiredParamsMissing){
+  if (isRequiredParamsMissing) {
     const groups = payload.groups;
     const cid = req.params.cid;
-      const isCidExist = await Categories.exists(cid);
-      let groupsData = [];
-      if(isCidExist) {
-        const groupsList= await privileges.categories.list(cid);
-        groups.forEach(async (group, index) => {
-          const cgroup = groupsList.groups.filter(data => data.name.toLowerCase() === group.toLowerCase());
-          if (cgroup && cgroup.length > 0) {
-            groupsData.push(cgroup[0])
-          } else {
-            const noGroup = {
-              name: group,
-              message: (constants.noGroupAddedMsg.replace('${group}', group)).replace('${cid}', cid)
-            }
-            groupsData.push(noGroup);
+    const isCidExist = await Categories.exists(cid);
+    let groupsData = [];
+    if (isCidExist) {
+      const groupsList = await privileges.categories.list(cid);
+      groups.forEach(async (group, index) => {
+        const cgroup = groupsList.groups.filter(data => data.name.toLowerCase() === group.toLowerCase());
+        if (cgroup && cgroup.length > 0) {
+          groupsData.push(cgroup[0])
+        } else {
+          const noGroup = {
+            name: group,
+            message: (constants.noGroupAddedMsg.replace('${group}', group)).replace('${cid}', cid)
           }
-          if(index === (groups.length -1)) {
-            const result = {
-              groups: groupsData
-            }
-           const responseObj = await util.responseData(req, res, result, null);
-           res.send(responseObj);
+          groupsData.push(noGroup);
+        }
+        if (index === (groups.length - 1)) {
+          const result = {
+            groups: groupsData
           }
-        })
-      } else {
-          util.generateError(req, res, constants.incorrectCid.replace('${cid}', cid), 400);
-      }
+          const responseObj = await util.responseData(req, res, result, null);
+          res.send(responseObj);
+        }
+      })
+    } else {
+      util.generateError(req, res, constants.incorrectCid.replace('${cid}', cid), 400);
+    }
   }
 }
 
@@ -1237,9 +1237,9 @@ async function getUsersDetails(req, res) {
   }
 
   if (userList.length == 0) {
-    util.generateError(req, res,  jsonConstants.forumStrings.payloadError, 400);
+    util.generateError(req, res, jsonConstants.forumStrings.payloadError, 400);
     return;
-  } 
+  }
 
   const responseObj = await util.responseData(req, res, userList, null);
   res.send(responseObj);
@@ -1255,7 +1255,7 @@ async function createForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-  if( isRequiredParamsMissing ) {
+  if (isRequiredParamsMissing) {
     try {
       const data = await client.save(payload);
       const responseObj = await util.responseData(req, res, data, null);
@@ -1275,12 +1275,12 @@ async function getForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-  if( isRequiredParamsMissing ) {
+  if (isRequiredParamsMissing) {
     try {
       const getData = await client.getContext(payload);
       const responseObj = await util.responseData(req, res, getData, null);
       res.send(responseObj);
-    } catch(error) {
+    } catch (error) {
       util.generateError(req, res, error.message, 500);
     }
   }
@@ -1295,7 +1295,7 @@ async function removeForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
-  if( isRequiredParamsMissing ) {
+  if (isRequiredParamsMissing) {
     try {
       const data = await client.removeContext(payload);
       if (data === 1) {
@@ -1304,7 +1304,7 @@ async function removeForumContext(req, res) {
       } else {
         util.generateError(req, res, jsonConstants.forumStrings.removeForumFailMsg, 400);
       }
-    } catch(error) {
+    } catch (error) {
       util.generateError(req, res, error.message, 500);
     }
   }
@@ -1314,7 +1314,7 @@ async function removeForumContext(req, res) {
  * @param {*} req 
  * @param {*} res 
  */
-function healthCheck (req, res) {
+function healthCheck(req, res) {
   console.log('SB LOG: Nodebb pod health check.');
   res.send(200);
 }
@@ -1326,27 +1326,27 @@ function healthCheck (req, res) {
  * @param {*} req 
  * @param {*} res 
  */
- async function updateUserProfileData(req,res) {
+async function updateUserProfileData(req, res) {
   const userData = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isPayloadCorrect = await util.checkRequiredParameters(req, res, requiredParams, userData);
-  if( isPayloadCorrect ) {
+  if (isPayloadCorrect) {
     try {
-          const userIds = await util.userDetailsByoAuth([userData.sbIdentifier]);
-          const uid = _.get(userIds[0], 'nodebbUid');
-          const isUserExist = await Users.exists(uid);
-          if (isUserExist) {
-              userData['uid'] = uid;
-              const userFields = jsonConstants.forumStrings.userFields;
-              const oldUserData = await Users.getUserFields(uid, userFields);
-              const result = await util.updateNodebbUserData(userData, oldUserData, userFields);
-              const responseObj = await util.responseData(req, res, jsonConstants.forumStrings.userDataSave, null);
-              res.send(responseObj);
-          } else {
-              util.generateError(req, res, jsonConstants.forumStrings.userDataError, 400);
-          }
+      const userIds = await util.userDetailsByoAuth([userData.sbIdentifier]);
+      const uid = _.get(userIds[0], 'nodebbUid');
+      const isUserExist = await Users.exists(uid);
+      if (isUserExist) {
+        userData['uid'] = uid;
+        const userFields = jsonConstants.forumStrings.userFields;
+        const oldUserData = await Users.getUserFields(uid, userFields);
+        const result = await util.updateNodebbUserData(userData, oldUserData, userFields);
+        const responseObj = await util.responseData(req, res, jsonConstants.forumStrings.userDataSave, null);
+        res.send(responseObj);
+      } else {
+        util.generateError(req, res, jsonConstants.forumStrings.userDataError, 400);
+      }
     } catch (error) {
-          util.generateError(req, res, error.message, 500);
+      util.generateError(req, res, error.message, 500);
     }
   }
 }
