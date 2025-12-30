@@ -1352,118 +1352,134 @@ async function updateUserProfileData(req, res) {
 }
 
 Plugin.load = async function (params) {
-  var router = params.router
-  client = require(`./database/${_.get(configData, 'database')}`);
-  client.connect(configData);
-  router.post(createSBForum, createForumContext)
-  router.post(getSBForum, getForumContext)
-  router.post(removeSBForum, removeForumContext)
-  router.post(categoryList, getListOfCategories);
-  router.post(tagsList, getTagsRelatedTopics);
-  router.post(contextBasesTags, getContextBasedTags)
-  router.post(createRelatedDiscussions, relatedDiscussions);
-  // also register the non-/api prefixed route for compatibility
-  router.post('/forum/v3/create', relatedDiscussions);
-  router.post(copyPrivilages, copyPrivilegeData);
-  router.post(getUids, getUserIds);
-  router.post(addUserIntoGroup, addUsers);
-  router.post(listOfGroupUsers, getContextUserGroups);
-  router.post(groupsPriveleges, getContextGroupPriveleges);
-  router.post(usersList, getUsersDetails);
-  router.post(updateUserProfile, updateUserProfileData);
+  try {
+    console.log('[nodebb-plugin-create-forum] Loading plugin...');
+    var router = params.router;
+
+    const dbType = _.get(configData, 'database');
+    console.log('[nodebb-plugin-create-forum] Database type:', dbType);
+
+    if (!dbType) {
+      console.error('[nodebb-plugin-create-forum] ERROR: No database type in config.json');
+      return;
+    }
+
+    client = require(`./database/${dbType}`);
+    await client.connect(configData);
+    console.log('[nodebb-plugin-create-forum] Database connected');
+    router.post(createSBForum, createForumContext)
+    router.post(getSBForum, getForumContext)
+    router.post(removeSBForum, removeForumContext)
+    router.post(categoryList, getListOfCategories);
+    router.post(tagsList, getTagsRelatedTopics);
+    router.post(contextBasesTags, getContextBasedTags)
+    router.post(createRelatedDiscussions, relatedDiscussions);
+    // also register the non-/api prefixed route for compatibility
+    router.post('/forum/v3/create', relatedDiscussions);
+    router.post(copyPrivilages, copyPrivilegeData);
+    router.post(getUids, getUserIds);
+    router.post(addUserIntoGroup, addUsers);
+    router.post(listOfGroupUsers, getContextUserGroups);
+    router.post(groupsPriveleges, getContextGroupPriveleges);
+    router.post(usersList, getUsersDetails);
+    router.post(updateUserProfile, updateUserProfileData);
 
 
-  router.get('/api/forum/health', healthCheck);
+    router.get('/api/forum/health', healthCheck);
 
-  router.post(
-    createForumURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    createForumAPI
-  )
-  router.post(
-    allTopicsByCategoryURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    allTopicsByCategory
-  )
-  router.post(
-    allPostsByTopicURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    allPostsByTopic
-  )
-  router.post(
-    getForumURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    getForumAPI
-  )
-  router.post(
-    createTenantURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    setupOrgAPI
-  )
-  router.post(
-    createSectionURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    addSectionURL
-  )
-  router.put(
-    banUserURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    banUserAPI
-  )
-  router.delete(
-    unbanUserURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    unbanUserAPI
-  )
-  router.post(
-    createTopicURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    createTopicAPI
-  )
-  router.post(createCatwithSubcatURL, createCatwithSubcat)
-  router.post(
-    replyTopicURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    replyTopicAPI
-  )
-  router.post(
-    voteURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    voteURLAPI
-  )
-  router.delete(
-    deletePostURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    deletePostAPI
-  )
-  router.delete(
-    deleteTopicURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    deleteTopicAPI
-  )
-  router.delete(
-    purgeTopicURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    purgeTopicAPI
-  )
-  router.delete(
-    purgePostURL,
-    apiMiddleware.requireUser,
-    apiMiddleware.requireAdmin,
-    purgePostAPI
-  )
+    router.post(
+      createForumURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      createForumAPI
+    )
+    router.post(
+      allTopicsByCategoryURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      allTopicsByCategory
+    )
+    router.post(
+      allPostsByTopicURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      allPostsByTopic
+    )
+    router.post(
+      getForumURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      getForumAPI
+    )
+    router.post(
+      createTenantURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      setupOrgAPI
+    )
+    router.post(
+      createSectionURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      addSectionURL
+    )
+    router.put(
+      banUserURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      banUserAPI
+    )
+    router.delete(
+      unbanUserURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      unbanUserAPI
+    )
+    router.post(
+      createTopicURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      createTopicAPI
+    )
+    router.post(createCatwithSubcatURL, createCatwithSubcat)
+    router.post(
+      replyTopicURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      replyTopicAPI
+    )
+    router.post(
+      voteURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      voteURLAPI
+    )
+    router.delete(
+      deletePostURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      deletePostAPI
+    )
+    router.delete(
+      deleteTopicURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      deleteTopicAPI
+    )
+    router.delete(
+      purgeTopicURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      purgeTopicAPI
+    )
+    router.delete(
+      purgePostURL,
+      apiMiddleware.requireUser,
+      apiMiddleware.requireAdmin,
+      purgePostAPI
+    )
+  }
+  catch (error) {
+    console.error('[nodebb-plugin-create-forum] ERROR:', error);
+  }
 }
