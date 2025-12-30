@@ -1,11 +1,11 @@
-var Plugin = (module.exports = {})
+const Plugin = (module.exports = {})
 const axios = require('axios')
-const Categories = require.main.require('./src/categories')
-const posts = require.main.require('./src/posts')
-const Topics = require.main.require('./src/topics')
-const Users = require.main.require('./src/user')
-const Groups = require.main.require('./src/groups')
-const db = require.main.require('./src/database')
+const Categories = module.parent.require('./src/categories')
+const posts = module.parent.require('./src/posts')
+const Topics = module.parent.require('./src/topics')
+const Users = module.parent.require('./src/user')
+const Groups = module.parent.require('./src/groups')
+const db = module.parent.require('./src/database')
 const async = require('async')
 const apiMiddleware = require('./middleware')
 const responseMessage = require('./responseHandler')
@@ -34,20 +34,20 @@ const createSBForum = '/api/forum/v2/create';
 const getSBForum = '/api/forum/v2/read';
 const removeSBForum = '/api/forum/v2/remove';
 const createRelatedDiscussions = '/api/forum/v3/create';
-const privileges = require.main.require('./src/privileges');
+const privileges = module.parent.require('./src/privileges');
 const _ = require('lodash');
 const copyPrivilages = '/api/privileges/v2/copy'
 const getUids = '/api/forum/v2/uids';
 const usersList = '/api/forum/v2/users/details';
 const addUserIntoGroup = '/api/forum/v3/group/membership';
 const groupsPriveleges = '/api/forum/v3/category/:cid/privileges';
-const oidcPlugin = require.main.require('./node_modules/nodebb-plugin-sunbird-oidc/library.js');
-const Settings = require.main.require('./src/settings');
+const oidcPlugin = module.parent.require('nodebb-plugin-sunbird-oidc/library.js');
+const Settings = module.parent.require('./src/settings');
 const listOfGroupUsers = '/api/forum/v3/groups/users';
 const updateUserProfile = '/api/forum/v3/user/profile';
 const jsonConstants = require('./lib/constants');
 const util = require('./lib/utils');
-const configData = require.main.require('./config.json');
+const configData = module.parent.require('./config.json');
 let client;
 
 
@@ -1351,7 +1351,7 @@ async function updateUserProfileData(req, res) {
   }
 }
 
-Plugin.load = function (params, callback) {
+Plugin.load = async function (params) {
   var router = params.router
   client = require(`./database/${_.get(configData, 'database')}`);
   client.connect(configData);
@@ -1362,6 +1362,8 @@ Plugin.load = function (params, callback) {
   router.post(tagsList, getTagsRelatedTopics);
   router.post(contextBasesTags, getContextBasedTags)
   router.post(createRelatedDiscussions, relatedDiscussions);
+  // also register the non-/api prefixed route for compatibility
+  router.post('/forum/v3/create', relatedDiscussions);
   router.post(copyPrivilages, copyPrivilegeData);
   router.post(getUids, getUserIds);
   router.post(addUserIntoGroup, addUsers);
@@ -1464,5 +1466,4 @@ Plugin.load = function (params, callback) {
     apiMiddleware.requireAdmin,
     purgePostAPI
   )
-  callback()
 }
