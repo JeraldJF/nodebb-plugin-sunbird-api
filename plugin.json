@@ -1,12 +1,12 @@
 {
-	"id": "nodebb-plugin-create-forum",
-	"name": "NodeBB Write-Enabled API",
-	"description": "A RESTful JSON-speaking API allowing you to write things to NodeBB",
+	"id": "nodebb-plugin-sunbird-api",
+	"name": "NodeBB Sunbird API",
+	"description": "A RESTful JSON-speaking API allowing you to write things to NodeBB with Sunbird integration",
 	"url": "https://github.com/JeraldJF/nodebb-plugin-sunbird-api",
 	"library": "./index.js",
 	"templates": "templates",
 	"hooks": [
-		{ "hook": "static:app.load", "method": "load" }
+		{ "hook": "static:app.load", "method": "init" }
 	],
 	"acpScripts": [
 		"public/js/admin.js"

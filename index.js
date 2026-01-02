@@ -9,6 +9,18 @@ const db = module.parent.require('./src/database')
 const async = require('async')
 const apiMiddleware = require('./middleware')
 const responseMessage = require('./responseHandler')
+
+// Import diagnostic infrastructure
+const PluginDiagnostics = require('./lib/diagnostics')
+const { getLogger } = require('./lib/logger')
+const HealthCheckManager = require('./lib/healthCheck')
+const RouteDiagnostics = require('./lib/routeDiagnostics')
+
+// Initialize diagnostic systems
+const diagnostics = new PluginDiagnostics('nodebb-plugin-sunbird-api')
+const logger = getLogger('nodebb-plugin-sunbird-api', { debug: true })
+const healthCheck = new HealthCheckManager('nodebb-plugin-sunbird-api')
+const routeDiagnostics = new RouteDiagnostics('nodebb-plugin-sunbird-api')
 const createTenantURL = '/api/org/v1/setup'
 const createForumURL = '/api/forum/v1/create'
 const createSectionURL = '/api/org/v1/sections/add'
@@ -1310,16 +1322,6 @@ async function removeForumContext(req, res) {
   }
 }
 /**
- * This api is to verify health of nodebb pod.
- * @param {*} req 
- * @param {*} res 
- */
-function healthCheck(req, res) {
-  console.log('SB LOG: Nodebb pod health check.');
-  res.send(200);
-}
-
-/**
  * This function will update the user data.
  * req body includes 
  * username, fullname, uid
@@ -1351,135 +1353,289 @@ async function updateUserProfileData(req, res) {
   }
 }
 
-Plugin.load = async function (params) {
+Plugin.init = async function (params) {
   try {
-    console.log('[nodebb-plugin-create-forum] Loading plugin...');
+    diagnostics.logLoadingStep('Plugin initialization started', { params: Object.keys(params) });
+    logger.logInitStep('Starting plugin initialization', { timestamp: new Date().toISOString() });
+    
+    console.log('[nodebb-plugin-sunbird-api] Initializing plugin...');
     var router = params.router;
 
-    const dbType = _.get(configData, 'database');
-    console.log('[nodebb-plugin-create-forum] Database type:', dbType);
-
-    if (!dbType) {
-      console.error('[nodebb-plugin-create-forum] ERROR: No database type in config.json');
-      return;
+    // Validate required parameters
+    if (!router) {
+      const error = new Error('Router parameter is required for plugin initialization');
+      diagnostics.logError(error, 'initialization-params');
+      logger.error('Missing router parameter', { params: Object.keys(params) });
+      throw error;
     }
 
-    client = require(`./database/${dbType}`);
-    await client.connect(configData);
-    console.log('[nodebb-plugin-create-forum] Database connected');
-    router.post(createSBForum, createForumContext)
-    router.post(getSBForum, getForumContext)
-    router.post(removeSBForum, removeForumContext)
-    router.post(categoryList, getListOfCategories);
-    router.post(tagsList, getTagsRelatedTopics);
-    router.post(contextBasesTags, getContextBasedTags)
-    router.post(createRelatedDiscussions, relatedDiscussions);
-    // also register the non-/api prefixed route for compatibility
-    router.post('/forum/v3/create', relatedDiscussions);
-    router.post(copyPrivilages, copyPrivilegeData);
-    router.post(getUids, getUserIds);
-    router.post(addUserIntoGroup, addUsers);
-    router.post(listOfGroupUsers, getContextUserGroups);
-    router.post(groupsPriveleges, getContextGroupPriveleges);
-    router.post(usersList, getUsersDetails);
-    router.post(updateUserProfile, updateUserProfileData);
+    // Log NodeBB version and environment info
+    diagnostics.logLoadingStep('Environment check', {
+      nodeVersion: process.version,
+      platform: process.platform,
+      nodeEnv: process.env.NODE_ENV
+    });
 
+    const dbType = _.get(configData, 'database');
+    console.log('[nodebb-plugin-sunbird-api] Database type:', dbType);
+    diagnostics.logLoadingStep('Database type detected', { dbType });
 
-    router.get('/api/forum/health', healthCheck);
+    if (!dbType) {
+      const error = new Error('No database type in config.json');
+      diagnostics.logError(error, 'database-config');
+      logger.error('Database configuration missing', { configData });
+      console.error('[nodebb-plugin-sunbird-api] ERROR: No database type in config.json');
+      throw error;
+    }
 
-    router.post(
-      createForumURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      createForumAPI
-    )
-    router.post(
-      allTopicsByCategoryURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      allTopicsByCategory
-    )
-    router.post(
-      allPostsByTopicURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      allPostsByTopic
-    )
-    router.post(
-      getForumURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      getForumAPI
-    )
-    router.post(
-      createTenantURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      setupOrgAPI
-    )
-    router.post(
-      createSectionURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      addSectionURL
-    )
-    router.put(
-      banUserURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      banUserAPI
-    )
-    router.delete(
-      unbanUserURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      unbanUserAPI
-    )
-    router.post(
-      createTopicURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      createTopicAPI
-    )
-    router.post(createCatwithSubcatURL, createCatwithSubcat)
-    router.post(
-      replyTopicURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      replyTopicAPI
-    )
-    router.post(
-      voteURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      voteURLAPI
-    )
-    router.delete(
-      deletePostURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      deletePostAPI
-    )
-    router.delete(
-      deleteTopicURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      deleteTopicAPI
-    )
-    router.delete(
-      purgeTopicURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      purgeTopicAPI
-    )
-    router.delete(
-      purgePostURL,
-      apiMiddleware.requireUser,
-      apiMiddleware.requireAdmin,
-      purgePostAPI
-    )
+    // Initialize database client with diagnostics
+    diagnostics.logLoadingStep('Database client initialization', { dbType });
+    try {
+      client = require(`./database/${dbType}`);
+      diagnostics.logDependencyLoad(`./database/${dbType}`, true);
+      
+      await client.connect(configData);
+      diagnostics.logDatabaseConnection(dbType, true);
+      logger.logDatabaseOperation('connect', { dbType, success: true });
+      console.log('[nodebb-plugin-sunbird-api] Database connected');
+    } catch (dbError) {
+      diagnostics.logDatabaseConnection(dbType, false, dbError);
+      logger.error('Database connection failed', { dbType, error: dbError.message });
+      throw dbError;
+    }
+
+    // Register health check endpoints first
+    diagnostics.logLoadingStep('Registering health check endpoints');
+    
+    // Health check endpoint
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/health', 
+      [healthCheck.createHealthEndpoint(diagnostics)], 
+      'healthCheck'
+    );
+    
+    // Diagnostics endpoint
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/diagnostics', 
+      [healthCheck.createDiagnosticsEndpoint(diagnostics)], 
+      'diagnosticsReport'
+    );
+    
+    // Route status endpoint
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/routes', 
+      [healthCheck.createRouteStatusEndpoint(diagnostics)], 
+      'routeStatus'
+    );
+
+    // Enhanced route diagnostics endpoints
+    diagnostics.logLoadingStep('Registering route diagnostics endpoints');
+    
+    // Route list endpoint - lists all registered plugin routes
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/routes/list', 
+      [healthCheck.createRouteListEndpoint(routeDiagnostics)], 
+      'routeList'
+    );
+    
+    // Route accessibility testing endpoint
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/routes/test', 
+      [healthCheck.createRouteTestEndpoint(routeDiagnostics)], 
+      'routeTest'
+    );
+    
+    // Route conflict resolution endpoint
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'get', '/api/forum/routes/conflicts', 
+      [healthCheck.createRouteConflictEndpoint(routeDiagnostics)], 
+      'routeConflicts'
+    );
+
+    // Register all other routes with diagnostics
+    diagnostics.logLoadingStep('Registering API routes');
+    
+    // Forum context routes
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', createSBForum, [createForumContext], 'createForumContext');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', getSBForum, [getForumContext], 'getForumContext');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', removeSBForum, [removeForumContext], 'removeForumContext');
+    
+    // Category and tag routes
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', categoryList, [getListOfCategories], 'getListOfCategories');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', tagsList, [getTagsRelatedTopics], 'getTagsRelatedTopics');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', contextBasesTags, [getContextBasedTags], 'getContextBasedTags');
+    
+    // Discussion routes
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', createRelatedDiscussions, [relatedDiscussions], 'relatedDiscussions');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', '/forum/v3/create', [relatedDiscussions], 'relatedDiscussions');
+    
+    // User and group management routes
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', copyPrivilages, [copyPrivilegeData], 'copyPrivilegeData');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', getUids, [getUserIds], 'getUserIds');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', addUserIntoGroup, [addUsers], 'addUsers');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', listOfGroupUsers, [getContextUserGroups], 'getContextUserGroups');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', groupsPriveleges, [getContextGroupPriveleges], 'getContextGroupPriveleges');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', usersList, [getUsersDetails], 'getUsersDetails');
+    routeDiagnostics.registerAndVerifyRoute(router, 'post', updateUserProfile, [updateUserProfileData], 'updateUserProfileData');
+
+    // Protected routes with middleware
+    diagnostics.logLoadingStep('Registering protected routes with middleware');
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', createForumURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, createForumAPI], 
+      'createForumAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', allTopicsByCategoryURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, allTopicsByCategory], 
+      'allTopicsByCategory'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', allPostsByTopicURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, allPostsByTopic], 
+      'allPostsByTopic'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', getForumURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, getForumAPI], 
+      'getForumAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', createTenantURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, setupOrgAPI], 
+      'setupOrgAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', createSectionURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, addSectionURL], 
+      'addSectionURL'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'put', banUserURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, banUserAPI], 
+      'banUserAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'delete', unbanUserURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, unbanUserAPI], 
+      'unbanUserAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', createTopicURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, createTopicAPI], 
+      'createTopicAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', createCatwithSubcatURL, 
+      [createCatwithSubcat], 
+      'createCatwithSubcat'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', replyTopicURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, replyTopicAPI], 
+      'replyTopicAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'post', voteURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, voteURLAPI], 
+      'voteURLAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'delete', deletePostURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, deletePostAPI], 
+      'deletePostAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'delete', deleteTopicURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, deleteTopicAPI], 
+      'deleteTopicAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'delete', purgeTopicURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgeTopicAPI], 
+      'purgeTopicAPI'
+    );
+    
+    routeDiagnostics.registerAndVerifyRoute(
+      router, 'delete', purgePostURL, 
+      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgePostAPI], 
+      'purgePostAPI'
+    );
+
+    // Verify all routes were registered correctly
+    diagnostics.logLoadingStep('Verifying route registration');
+    const routeVerification = routeDiagnostics.verifyAllRoutes(router);
+    
+    if (routeVerification.failed > 0) {
+      logger.warn('Some routes failed verification', routeVerification);
+    }
+
+    // Check for route conflicts
+    diagnostics.logLoadingStep('Checking for route conflicts');
+    const allRoutes = routeDiagnostics.getAllRoutes();
+    allRoutes.forEach(route => {
+      routeDiagnostics.checkRouteConflicts(route.method, route.path);
+    });
+
+    // Final plugin initialization completion
+    diagnostics.logLoadingStep('Plugin initialization completed', {
+      totalRoutes: allRoutes.length,
+      verifiedRoutes: routeVerification.verified,
+      failedRoutes: routeVerification.failed,
+      conflicts: routeDiagnostics.getRouteConflicts().length
+    });
+
+    logger.logInitStep('Plugin initialization completed successfully', {
+      initTime: Date.now() - diagnostics.loadStartTime,
+      routesRegistered: allRoutes.length
+    });
+
+    // Log final status
+    const healthStatus = diagnostics.getHealthStatus();
+    logger.info('Plugin health status', healthStatus);
+    
+    console.log('[nodebb-plugin-sunbird-api] Plugin initialized successfully');
+    console.log(`[nodebb-plugin-sunbird-api] Registered ${allRoutes.length} routes`);
+    console.log(`[nodebb-plugin-sunbird-api] Health check available at /api/forum/health`);
+    console.log(`[nodebb-plugin-sunbird-api] Route diagnostics available at /api/forum/routes/list`);
+    console.log(`[nodebb-plugin-sunbird-api] Route testing available at /api/forum/routes/test`);
+    console.log(`[nodebb-plugin-sunbird-api] Route conflicts available at /api/forum/routes/conflicts`);
+    
+    // Return success status for NodeBB v4 compatibility
+    return {
+      success: true,
+      routesRegistered: allRoutes.length,
+      healthEndpoints: [
+        '/api/forum/health', 
+        '/api/forum/diagnostics', 
+        '/api/forum/routes',
+        '/api/forum/routes/list',
+        '/api/forum/routes/test',
+        '/api/forum/routes/conflicts'
+      ]
+    };
   }
   catch (error) {
-    console.error('[nodebb-plugin-create-forum] ERROR:', error);
+    diagnostics.logError(error, 'plugin-initialization');
+    logger.error('Plugin initialization failed', { error: error.message, stack: error.stack });
+    console.error('[nodebb-plugin-sunbird-api] INITIALIZATION ERROR:', error);
+    
+    // Ensure error is properly propagated for NodeBB v4
+    throw new Error(`Plugin initialization failed: ${error.message}`);
   }
 }
