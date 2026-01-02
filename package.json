@@ -1,6 +1,6 @@
 {
-  "name": "nodebb-plugin-create-forum",
-  "version": "2.0.3",
+  "name": "nodebb-plugin-sunbird-api",
+  "version": "2.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
