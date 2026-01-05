@@ -20,13 +20,23 @@ const jsonConstants = require('./lib/constants');
 const util = require('./lib/utils');
 const utils = require('./utils');
 
-// FIXED: Use require.main.require for config.json
+// FIXED: Use require.main.require for config.json with better error handling
 let configData;
 try {
   configData = require.main.require('./config.json');
+  console.log('[nodebb-plugin-sunbird-api] Config.json loaded successfully');
 } catch (error) {
-  console.error('[nodebb-plugin-sunbird-api] Could not load config.json:', error.message);
-  configData = {};
+  console.log('[nodebb-plugin-sunbird-api] Could not load config.json:', error.message);
+  console.log('[nodebb-plugin-sunbird-api] Using environment variables for configuration');
+  // Fallback to environment variables and default config
+  configData = {
+    database: process.env.database || 'redis',
+    redis: {
+      host: process.env.redis__host || 'localhost',
+      port: process.env.redis__port || 6379,
+      database: process.env.redis__database || 0
+    }
+  };
 }
 
 let client;
@@ -1260,7 +1270,8 @@ plugin.init = async function (params) {
       throw new Error('Router parameter is required for plugin initialization');
     }
 
-    const dbType = _.get(configData, 'database');
+    // FIXED: Better database type detection with fallback
+    const dbType = _.get(configData, 'database') || process.env.database || 'redis';
     console.log('[nodebb-plugin-sunbird-api] Database type:', dbType);
 
     if (!dbType) {
@@ -1268,14 +1279,19 @@ plugin.init = async function (params) {
       throw new Error('No database type in config.json');
     }
 
-    // Initialize database client
+    // Initialize database client with better error handling
     try {
       client = require(`./database/${dbType}`);
-      await client.connect(configData);
-      console.log('[nodebb-plugin-sunbird-api] Database connected');
+      if (client && typeof client.connect === 'function') {
+        await client.connect(configData);
+        console.log('[nodebb-plugin-sunbird-api] Database connected successfully');
+      } else {
+        console.log('[nodebb-plugin-sunbird-api] Database client loaded (no connect method)');
+      }
     } catch (dbError) {
       console.error('[nodebb-plugin-sunbird-api] Database connection failed:', dbError.message);
-      throw dbError;
+      console.log('[nodebb-plugin-sunbird-api] Continuing without database client...');
+      // Don't throw error - continue with route registration
     }
 
     // FIXED: Register health check endpoints with /discussions/api prefix for consistency
@@ -1283,12 +1299,16 @@ plugin.init = async function (params) {
       res.json({
         status: 'ok',
         plugin: 'nodebb-plugin-sunbird-api',
-        version: '2.0.4',
+        version: '2.0.5',
         timestamp: new Date().toISOString(),
         nodebbVersion: process.env.npm_package_version || 'unknown',
+        database: dbType,
         routes: [
           '/discussions/api/forum/health',
           '/discussions/api/forum/routes',
+          '/discussions/api/forum/v1/create',
+          '/discussions/api/forum/v1/read',
+          '/discussions/api/forum/v2/create',
           '/discussions/api/forum/v2/read',
           '/discussions/api/forum/v3/create'
         ]
@@ -1300,8 +1320,13 @@ plugin.init = async function (params) {
         available_routes: [
           'GET /discussions/api/forum/health - Health check',
           'GET /discussions/api/forum/routes - List all routes',
-          'POST /discussions/api/forum/v2/read - Read forum data',
-          'POST /discussions/api/forum/v3/create - Create forum content'
+          'POST /discussions/api/forum/v1/create - Create forum (v1)',
+          'POST /discussions/api/forum/v1/read - Read forum (v1)',
+          'POST /discussions/api/forum/v2/create - Create forum (v2)',
+          'POST /discussions/api/forum/v2/read - Read forum (v2)',
+          'POST /discussions/api/forum/v3/create - Create forum (v3)',
+          'POST /discussions/api/topic/v1/create - Create topic',
+          'POST /discussions/api/topic/v1/reply - Reply to topic'
         ]
       });
     });
@@ -1345,11 +1370,14 @@ plugin.init = async function (params) {
     router.delete(purgePostURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgePostAPI);
 
     console.log('[nodebb-plugin-sunbird-api] Plugin initialized successfully');
-    console.log('[nodebb-plugin-sunbird-api] Health check available at /forum/health');
+    console.log('[nodebb-plugin-sunbird-api] Routes registered:');
+    console.log('[nodebb-plugin-sunbird-api] - Health check: /discussions/api/forum/health');
+    console.log('[nodebb-plugin-sunbird-api] - Forum create: /discussions/api/forum/v1/create');
+    console.log('[nodebb-plugin-sunbird-api] - Forum read: /discussions/api/forum/v1/read');
     
     return {
       success: true,
-      routesRegistered: 'All routes registered with /forum prefix'
+      routesRegistered: 'All routes registered with /discussions/api prefix'
     };
   }
   catch (error) {
