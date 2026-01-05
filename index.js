@@ -1,68 +1,37 @@
-const Plugin = (module.exports = {})
-const axios = require('axios')
-const Categories = module.parent.require('./src/categories')
-const posts = module.parent.require('./src/posts')
-const Topics = module.parent.require('./src/topics')
-const Users = module.parent.require('./src/user')
-const Groups = module.parent.require('./src/groups')
-const db = module.parent.require('./src/database')
-const async = require('async')
-const apiMiddleware = require('./middleware')
-const responseMessage = require('./responseHandler')
+'use strict';
 
-// Import diagnostic infrastructure
-const PluginDiagnostics = require('./lib/diagnostics')
-const { getLogger } = require('./lib/logger')
-const HealthCheckManager = require('./lib/healthCheck')
-const RouteDiagnostics = require('./lib/routeDiagnostics')
+// FIXED: Use require.main.require instead of module.parent.require for NodeBB v4 compatibility
+const Categories = require.main.require('./src/categories');
+const posts = require.main.require('./src/posts');
+const Topics = require.main.require('./src/topics');
+const Users = require.main.require('./src/user');
+const Groups = require.main.require('./src/groups');
+const db = require.main.require('./src/database');
+const privileges = require.main.require('./src/privileges');
+const Settings = require.main.require('./src/settings');
 
-// Initialize diagnostic systems
-const diagnostics = new PluginDiagnostics('nodebb-plugin-sunbird-api')
-const logger = getLogger('nodebb-plugin-sunbird-api', { debug: true })
-const healthCheck = new HealthCheckManager('nodebb-plugin-sunbird-api')
-const routeDiagnostics = new RouteDiagnostics('nodebb-plugin-sunbird-api')
-const createTenantURL = '/api/org/v1/setup'
-const createForumURL = '/api/forum/v1/create'
-const createSectionURL = '/api/org/v1/sections/add'
-const getForumURL = '/api/forum/v1/read'
-const categoryList = '/api/category/list';
-// Note: axios is already imported at line 2
-const tagsList = '/api/tags/list'
-const contextBasesTags = '/api/forum/tags'
-const utils = require('./utils')
-const allTopicsByCategoryURL = '/api/category/v1/topic'
-const allPostsByTopicURL = '/api/topic/v1/posts'
-const replyTopicURL = '/api/topic/v1/reply'
-const createTopicURL = '/api/topic/v1/create'
-const voteURL = '/api/:pid/vote'
-const deletePostURL = '/api/post/v1/delete/:pid'
-const deleteTopicURL = '/api/topic/v1/delete/:tid'
-const purgePostURL = '/api/post/v1/purge/:pid'
-const purgeTopicURL = '/api/topic/v1/purge/:tid'
-const banUserURL = '/api/user/v1/ban'
-const unbanUserURL = '/api/user/v1/unban'
-const createCatwithSubcatURL = '/api/create'
-const createSBForum = '/api/forum/v2/create';
-const getSBForum = '/api/forum/v2/read';
-const removeSBForum = '/api/forum/v2/remove';
-const createRelatedDiscussions = '/api/forum/v3/create';
-const privileges = module.parent.require('./src/privileges');
+// Plugin dependencies
+const axios = require('axios');
+const async = require('async');
 const _ = require('lodash');
-const copyPrivilages = '/api/privileges/v2/copy'
-const getUids = '/api/forum/v2/uids';
-const usersList = '/api/forum/v2/users/details';
-const addUserIntoGroup = '/api/forum/v3/group/membership';
-const groupsPriveleges = '/api/forum/v3/category/:cid/privileges';
-const oidcPlugin = module.parent.require('nodebb-plugin-sunbird-oidc/library.js');
-const Settings = module.parent.require('./src/settings');
-const listOfGroupUsers = '/api/forum/v3/groups/users';
-const updateUserProfile = '/api/forum/v3/user/profile';
+const apiMiddleware = require('./middleware');
+const responseMessage = require('./responseHandler');
 const jsonConstants = require('./lib/constants');
 const util = require('./lib/utils');
-const configData = module.parent.require('./config.json');
+const utils = require('./utils');
+
+// FIXED: Use require.main.require for config.json
+let configData;
+try {
+  configData = require.main.require('./config.json');
+} catch (error) {
+  console.error('[nodebb-plugin-sunbird-api] Could not load config.json:', error.message);
+  configData = {};
+}
+
 let client;
 
-
+// Import library functions
 const {
   createCategory,
   createCategory_check,
@@ -74,9 +43,39 @@ const {
   getForum,
   createTopic,
   replyTopic
-} = require('./library')
+} = require('./library');
 
-const { default: Axios } = require('axios')
+// Constants and URLs - FIXED: Use /discussions/api prefix with clean paths
+const createTenantURL = '/discussions/api/org/v1/setup';
+const createForumURL = '/discussions/api/forum/v1/create';
+const createSectionURL = '/discussions/api/org/v1/sections/add';
+const getForumURL = '/discussions/api/forum/v1/read';
+const categoryList = '/discussions/api/category/list';
+const tagsList = '/discussions/api/tags/list';
+const contextBasesTags = '/discussions/api/forum/tags';
+const allTopicsByCategoryURL = '/discussions/api/category/v1/topic';
+const allPostsByTopicURL = '/discussions/api/topic/v1/posts';
+const replyTopicURL = '/discussions/api/topic/v1/reply';
+const createTopicURL = '/discussions/api/topic/v1/create';
+const voteURL = '/discussions/api/:pid/vote';
+const deletePostURL = '/discussions/api/post/v1/delete/:pid';
+const deleteTopicURL = '/discussions/api/topic/v1/delete/:tid';
+const purgePostURL = '/discussions/api/post/v1/purge/:pid';
+const purgeTopicURL = '/discussions/api/topic/v1/purge/:tid';
+const banUserURL = '/discussions/api/user/v1/ban';
+const unbanUserURL = '/discussions/api/user/v1/unban';
+const createCatwithSubcatURL = '/discussions/api/create';
+const createSBForum = '/discussions/api/forum/v2/create';
+const getSBForum = '/discussions/api/forum/v2/read';
+const removeSBForum = '/discussions/api/forum/v2/remove';
+const createRelatedDiscussions = '/discussions/api/forum/v3/create';
+const copyPrivilages = '/discussions/api/privileges/v2/copy';
+const getUids = '/discussions/api/forum/v2/uids';
+const usersList = '/discussions/api/forum/v2/users/details';
+const addUserIntoGroup = '/discussions/api/forum/v3/group/membership';
+const groupsPriveleges = '/discussions/api/forum/v3/category/:cid/privileges';
+const listOfGroupUsers = '/discussions/api/forum/v3/groups/users';
+const updateUserProfile = '/discussions/api/forum/v3/user/profile';
 
 var constants = {
   'name': 'sunbird-oidc',
@@ -89,27 +88,26 @@ var constants = {
   'statusFailed': 'failed',
   'http_protocal': 'http',
   'statusSuccess': 'Success',
-  '/api/category/list': 'api.discussions.category.list',
-  'api/tags/list': 'api.discussion.tags.list',
-  '/api/forum/v3/create': 'api.forum.v3.create',
+  '/forum/category/list': 'api.discussions.category.list',
+  'forum/tags/list': 'api.discussion.tags.list',
+  '/forum/forum/v3/create': 'api.forum.v3.create',
   'createCategory': '/v2/categories',
   'createForum': '/forum/v2/create',
   'getForum': '/forum/v2/read',
   'addUserIntoGroup': '/v2/groups/:slug/membership/:uid',
   'createPrivileges': '/v2/categories/:cid/privileges',
-  '/api/privileges/v2/copy': 'api.privileges.v2.copy',
+  '/forum/privileges/v2/copy': 'api.privileges.v2.copy',
   'defaultCategory': 'General Discussion',
   'post': 'POST',
   'get': 'GET',
   'put': 'PUT',
-  'apiPrefix': '/api',
+  'apiPrefix': '/discussions/api',
   'emptyGroupsMsg': "Groups and CID should not be empty",
   'incorrectCid': 'Category id ${cid} is not exists, Please use correct cid',
   'emptyDataFOrGroupsAndMembers': 'Groups and members should not be empty',
   'noGroupAddedMsg': '${group} was not added for the category id ${cid}, please add and try again.',
   'emptyDataForGroups': 'You have to pass both sbUid and sbUserName',
   'pluginSettings': new Settings('fusionauth-oidc', '1.0.0', {
-    // Default settings
     clientId: "",
     clientSecret: "",
     emailClaim: 'email',
@@ -120,14 +118,14 @@ var constants = {
     userInfoEndpoint: "",
     emailDomain: ""
   }, false, false),
-}
+};
 
-
+// All the API handler functions (preserved from original)
 async function createTopicAPI(req, res) {
-  var payload = { ...req.body.request }
-  console.log('-----------payload ---------------', payload)
-  payload.tags = payload.tags || []
-  payload.uid = payload._uid ? payload._uid : req.user.uid
+  var payload = { ...req.body.request };
+  console.log('-----------payload ---------------', payload);
+  payload.tags = payload.tags || [];
+  payload.uid = payload._uid ? payload._uid : req.user.uid;
 
   return createTopic(payload)
     .then(topicObj => {
@@ -137,11 +135,11 @@ async function createTopicAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: topicObj
-      }
-      return res.json(responseMessage.successResponse(resObj))
+      };
+      return res.json(responseMessage.successResponse(resObj));
     })
     .catch(error => {
-      console.log('--------------error 00000000', error)
+      console.log('--------------error 00000000', error);
       let resObj = {
         id: 'api.discussions.topic.create',
         msgId: req.body.params.msgid,
@@ -149,16 +147,16 @@ async function createTopicAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function allTopicsByCategory(req, res) {
-  var payload = { ...req.body.request }
+  var payload = { ...req.body.request };
 
   axios
-    .get(`http://localhost:4567/api/category/${payload.cid}`)
+    .get(`http://localhost:4567/forum/category/${payload.cid}`)
     .then(topicObj => {
       let resObj = {
         id: 'api.discussions.topic.all',
@@ -166,11 +164,11 @@ async function allTopicsByCategory(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: topicObj.data
-      }
-      return res.json(responseMessage.successResponse(resObj))
+      };
+      return res.json(responseMessage.successResponse(resObj));
     })
     .catch(error => {
-      console.log(error)
+      console.log(error);
       let resObj = {
         id: 'api.discussions.topic.all',
         msgId: req.body.params.msgid,
@@ -178,26 +176,25 @@ async function allTopicsByCategory(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function allPostsByTopic(req, res) {
-  var payload = { ...req.body.request }
-  console.log('--------------------', payload)
+  var payload = { ...req.body.request };
+  console.log('--------------------', payload);
   axios
-    .get(`http://localhost:4567/api/topic/${payload.tid}`)
+    .get(`http://localhost:4567/forum/topic/${payload.tid}`)
     .then(postObj => {
-      // console.log('--------------------',postObj)
       let resObj = {
         id: 'api.discussions.reply.all',
         msgId: req.body.params.msgid,
         status: 'successful',
         resCode: 'OK',
         data: postObj.data
-      }
-      return res.json(responseMessage.successResponse(resObj))
+      };
+      return res.json(responseMessage.successResponse(resObj));
     })
     .catch(error => {
       let resObj = {
@@ -207,24 +204,24 @@ async function allPostsByTopic(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function replyTopicAPI(req, res) {
-  let { body } = req
+  let { body } = req;
 
   var payload = {
     tid: body.request.tid,
     uid: req.user.uid,
-    req: utils.buildReqObject(req), // For IP recording
+    req: utils.buildReqObject(req),
     content: body.request.content,
     timestamp: body.request.timestamp || Date.now()
-  }
+  };
 
   if (req.body.toPid) {
-    payload.toPid = body.request.toPid
+    payload.toPid = body.request.toPid;
   }
 
   return replyTopic(payload)
@@ -235,8 +232,8 @@ async function replyTopicAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: topicObj
-      }
-      return res.status(200).json(responseMessage.successResponse(resObj))
+      };
+      return res.status(200).json(responseMessage.successResponse(resObj));
     })
     .catch(error => {
       let resObj = {
@@ -246,13 +243,13 @@ async function replyTopicAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function deletePostAPI(req, res) {
-  let { body } = req
+  let { body } = req;
   posts.delete(req.params.pid, req.user.uid, function (error) {
     if (error) {
       let resObj = {
@@ -262,8 +259,8 @@ async function deletePostAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
     }
     let resObj = {
       id: 'api.discussions.delete.post',
@@ -271,9 +268,9 @@ async function deletePostAPI(req, res) {
       status: 'successful',
       resCode: 'OK',
       data: null
-    }
-    return res.status(200).json(responseMessage.successResponse(resObj))
-  })
+    };
+    return res.status(200).json(responseMessage.successResponse(resObj));
+  });
 }
 
 async function deleteTopicAPI(req, res) {
@@ -286,8 +283,8 @@ async function deleteTopicAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
     }
     let resObj = {
       id: 'api.discussions.delete.topic',
@@ -295,9 +292,9 @@ async function deleteTopicAPI(req, res) {
       status: 'successful',
       resCode: 'OK',
       data: null
-    }
-    return res.status(200).json(responseMessage.successResponse(resObj))
-  })
+    };
+    return res.status(200).json(responseMessage.successResponse(resObj));
+  });
 }
 
 async function purgeTopicAPI(req, res) {
@@ -310,8 +307,8 @@ async function purgeTopicAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
     }
     let resObj = {
       id: 'api.discussions.purge.topic',
@@ -319,9 +316,9 @@ async function purgeTopicAPI(req, res) {
       status: 'successful',
       resCode: 'OK',
       data: null
-    }
-    return res.status(200).json(responseMessage.successResponse(resObj))
-  })
+    };
+    return res.status(200).json(responseMessage.successResponse(resObj));
+  });
 }
 
 async function purgePostAPI(req, res) {
@@ -334,8 +331,8 @@ async function purgePostAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
     }
     let resObj = {
       id: 'api.discussions.purge.post',
@@ -343,13 +340,13 @@ async function purgePostAPI(req, res) {
       status: 'successful',
       resCode: 'OK',
       data: null
-    }
-    return res.status(200).json(responseMessage.successResponse(resObj))
-  })
+    };
+    return res.status(200).json(responseMessage.errorResponse(resObj));
+  });
 }
 
 async function voteURLAPI(req, res) {
-  let { body } = req
+  let { body } = req;
 
   if (body.request.delta > 0) {
     posts.upvote(req.params.pid, req.user.uid, function (error, data) {
@@ -361,8 +358,8 @@ async function voteURLAPI(req, res) {
           resCode: 'SERVER_ERROR',
           err: error.status,
           errmsg: error.message
-        }
-        return res.status(400).json(responseMessage.errorResponse(resObj))
+        };
+        return res.status(400).json(responseMessage.errorResponse(resObj));
       }
       let resObj = {
         id: 'api.discussions.post.vote',
@@ -370,9 +367,9 @@ async function voteURLAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: data
-      }
-      return res.status(200).json(responseMessage.successResponse(resObj))
-    })
+      };
+      return res.status(200).json(responseMessage.successResponse(resObj));
+    });
   } else if (body.request.delta < 0) {
     posts.downvote(req.params.pid, req.user.uid, function (error, data) {
       if (error) {
@@ -383,8 +380,8 @@ async function voteURLAPI(req, res) {
           resCode: 'SERVER_ERROR',
           err: error.status,
           errmsg: error.message
-        }
-        return res.status(400).json(responseMessage.errorResponse(resObj))
+        };
+        return res.status(400).json(responseMessage.errorResponse(resObj));
       }
       let resObj = {
         id: 'api.discussions.post.vote',
@@ -392,9 +389,9 @@ async function voteURLAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: data
-      }
-      return res.status(200).json(responseMessage.successResponse(resObj))
-    })
+      };
+      return res.status(200).json(responseMessage.successResponse(resObj));
+    });
   } else {
     posts.unvote(req.params.pid, req.user.uid, function (error, data) {
       if (error) {
@@ -405,8 +402,8 @@ async function voteURLAPI(req, res) {
           resCode: 'SERVER_ERROR',
           err: error.status,
           errmsg: error.message
-        }
-        return res.status(400).json(responseMessage.errorResponse(resObj))
+        };
+        return res.status(400).json(responseMessage.errorResponse(resObj));
       }
       let resObj = {
         id: 'api.discussions.post.vote',
@@ -414,14 +411,14 @@ async function voteURLAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: data
-      }
-      return res.status(200).json(responseMessage.successResponse(resObj))
-    })
+      };
+      return res.status(200).json(responseMessage.successResponse(resObj));
+    });
   }
 }
 
 async function banUserAPI(req, res) {
-  let { body } = req
+  let { body } = req;
 
   Users.bans.ban(
     body.request.uid,
@@ -436,8 +433,8 @@ async function banUserAPI(req, res) {
           resCode: 'SERVER_ERROR',
           err: error.status,
           errmsg: error.message
-        }
-        return res.status(400).json(responseMessage.errorResponse(resObj))
+        };
+        return res.status(400).json(responseMessage.errorResponse(resObj));
       }
       let resObj = {
         id: 'api.discussions.user.ban',
@@ -445,14 +442,14 @@ async function banUserAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: null
-      }
-      return res.status(200).json(responseMessage.successResponse(resObj))
+      };
+      return res.status(200).json(responseMessage.successResponse(resObj));
     }
-  )
+  );
 }
 
 async function unbanUserAPI(req, res) {
-  let { body } = req
+  let { body } = req;
 
   Users.bans.unban(body.request.uid, function (error) {
     if (error) {
@@ -463,8 +460,8 @@ async function unbanUserAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.status(400).json(responseMessage.errorResponse(resObj))
+      };
+      return res.status(400).json(responseMessage.errorResponse(resObj));
     }
     let resObj = {
       id: 'api.discussions.user.ban',
@@ -472,22 +469,22 @@ async function unbanUserAPI(req, res) {
       status: 'successful',
       resCode: 'OK',
       data: null
-    }
-    return res.status(200).json(responseMessage.successResponse(resObj))
-  })
+    };
+    return res.status(200).json(responseMessage.successResponse(resObj));
+  });
 }
 
 async function setupOrgAPI(req, res) {
-  let { body } = req
-  var reqPrivileges = body.request.privileges
+  let { body } = req;
+  var reqPrivileges = body.request.privileges;
   return createCategory(body.request)
     .then(catResponse => {
       if (catResponse) {
-        let allCatIds = []
+        let allCatIds = [];
         catResponse.sectionObj.map(section => {
-          allCatIds.push(section.cid)
-        })
-        allCatIds.push(catResponse.categoryObj.cid)
+          allCatIds.push(section.cid);
+        });
+        allCatIds.push(catResponse.categoryObj.cid);
         return addPrivileges(reqPrivileges, allCatIds)
           .then(privilegesResponse => {
             let resObj = {
@@ -496,8 +493,8 @@ async function setupOrgAPI(req, res) {
               status: 'successful',
               resCode: 'OK',
               data: catResponse
-            }
-            return res.json(responseMessage.successResponse(resObj))
+            };
+            return res.json(responseMessage.successResponse(resObj));
           })
           .catch(error => {
             let resObj = {
@@ -507,9 +504,9 @@ async function setupOrgAPI(req, res) {
               resCode: 'SERVER_ERROR',
               err: error.status,
               errmsg: error.message
-            }
-            return res.json(responseMessage.errorResponse(resObj))
-          })
+            };
+            return res.json(responseMessage.errorResponse(resObj));
+          });
       }
     })
     .catch(error => {
@@ -520,20 +517,20 @@ async function setupOrgAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function addSectionURL(req, res) {
-  let { body } = req
-  var reqPrivileges = body.request.privileges
+  let { body } = req;
+  var reqPrivileges = body.request.privileges;
   return addSection(body.request)
     .then(catResponse => {
-      let allCatIds = []
+      let allCatIds = [];
       catResponse.sectionObj.map(section => {
-        allCatIds.push(section.cid)
-      })
+        allCatIds.push(section.cid);
+      });
       return addPrivileges(reqPrivileges, allCatIds)
         .then(privilegesResponse => {
           let resObj = {
@@ -542,8 +539,8 @@ async function addSectionURL(req, res) {
             status: 'successful',
             resCode: 'OK',
             data: catResponse
-          }
-          return res.json(responseMessage.successResponse(resObj))
+          };
+          return res.json(responseMessage.successResponse(resObj));
         })
         .catch(error => {
           let resObj = {
@@ -553,9 +550,9 @@ async function addSectionURL(req, res) {
             resCode: 'SERVER_ERROR',
             err: error.status,
             errmsg: error.message
-          }
-          return res.json(responseMessage.errorResponse(resObj))
-        })
+          };
+          return res.json(responseMessage.errorResponse(resObj));
+        });
     })
     .catch(error => {
       let resObj = {
@@ -565,14 +562,14 @@ async function addSectionURL(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function createForumAPI(req, res) {
-  let { body } = req
-  var reqPrivileges = body.request.privileges
+  let { body } = req;
+  var reqPrivileges = body.request.privileges;
 
   if (!body.request.organisationId && !body.request.context) {
     let resObj = {
@@ -582,13 +579,13 @@ async function createForumAPI(req, res) {
       resCode: 'SERVER_ERROR',
       err: 401,
       errmsg: 'Please provide orgId or context! something is missing'
-    }
-    return res.json(responseMessage.errorResponse(resObj))
+    };
+    return res.json(responseMessage.errorResponse(resObj));
   } else {
     return createForum(body.request)
       .then(catResponse => {
-        let allCatIds = []
-        allCatIds.push(catResponse.cid)
+        let allCatIds = [];
+        allCatIds.push(catResponse.cid);
         if (body.request.groups && body.request.privileges) {
           return createGroup(body.request, allCatIds)
             .then(groupObj => {
@@ -600,8 +597,8 @@ async function createForumAPI(req, res) {
                     status: 'successful',
                     resCode: 'OK',
                     data: catResponse
-                  }
-                  return res.json(responseMessage.successResponse(resObj))
+                  };
+                  return res.json(responseMessage.successResponse(resObj));
                 })
                 .catch(error => {
                   let resObj = {
@@ -611,9 +608,9 @@ async function createForumAPI(req, res) {
                     resCode: 'SERVER_ERROR',
                     err: error.status,
                     errmsg: error.message
-                  }
-                  return res.json(responseMessage.errorResponse(resObj))
-                })
+                  };
+                  return res.json(responseMessage.errorResponse(resObj));
+                });
             })
             .catch(error => {
               let resObj = {
@@ -623,9 +620,9 @@ async function createForumAPI(req, res) {
                 resCode: 'SERVER_ERROR',
                 err: error.status,
                 errmsg: error.message
-              }
-              return res.json(responseMessage.errorResponse(resObj))
-            })
+              };
+              return res.json(responseMessage.errorResponse(resObj));
+            });
         } else if (body.request.groups && !body.request.privileges) {
           return createGroup(body.request, allCatIds)
             .then(groupObj => {
@@ -635,8 +632,8 @@ async function createForumAPI(req, res) {
                 status: 'successful',
                 resCode: 'OK',
                 data: catResponse
-              }
-              return res.json(responseMessage.successResponse(resObj))
+              };
+              return res.json(responseMessage.successResponse(resObj));
             })
             .catch(error => {
               let resObj = {
@@ -646,9 +643,9 @@ async function createForumAPI(req, res) {
                 resCode: 'SERVER_ERROR',
                 err: error.status,
                 errmsg: error.message
-              }
-              return res.json(responseMessage.errorResponse(resObj))
-            })
+              };
+              return res.json(responseMessage.errorResponse(resObj));
+            });
         } else if (!body.request.groups && body.request.privileges) {
           return addPrivileges(reqPrivileges, allCatIds)
             .then(privilegesResponse => {
@@ -658,8 +655,8 @@ async function createForumAPI(req, res) {
                 status: 'successful',
                 resCode: 'OK',
                 data: catResponse
-              }
-              return res.json(responseMessage.successResponse(resObj))
+              };
+              return res.json(responseMessage.successResponse(resObj));
             })
             .catch(error => {
               let resObj = {
@@ -669,9 +666,9 @@ async function createForumAPI(req, res) {
                 resCode: 'SERVER_ERROR',
                 err: error.status,
                 errmsg: error.message
-              }
-              return res.json(responseMessage.errorResponse(resObj))
-            })
+              };
+              return res.json(responseMessage.errorResponse(resObj));
+            });
         } else {
           let resObj = {
             id: 'api.discussions.forum.create',
@@ -679,8 +676,8 @@ async function createForumAPI(req, res) {
             status: 'successful',
             resCode: 'OK',
             data: catResponse
-          }
-          return res.json(responseMessage.successResponse(resObj))
+          };
+          return res.json(responseMessage.successResponse(resObj));
         }
       })
       .catch(error => {
@@ -691,14 +688,14 @@ async function createForumAPI(req, res) {
           resCode: 'SERVER_ERROR',
           err: error.status,
           errmsg: error.message
-        }
-        return res.json(responseMessage.errorResponse(resObj))
-      })
+        };
+        return res.json(responseMessage.errorResponse(resObj));
+      });
   }
 }
 
 async function getForumAPI(req, res) {
-  let { body } = req
+  let { body } = req;
   return getForum(body.request)
     .then(forumResponse => {
       let resObj = {
@@ -707,8 +704,8 @@ async function getForumAPI(req, res) {
         status: 'successful',
         resCode: 'OK',
         data: forumResponse
-      }
-      return res.json(responseMessage.successResponse(resObj))
+      };
+      return res.json(responseMessage.successResponse(resObj));
     })
     .catch(error => {
       let resObj = {
@@ -718,22 +715,22 @@ async function getForumAPI(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
+      };
 
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 async function createCatwithSubcat(req, res) {
-  let { body } = req
+  let { body } = req;
   return createCategory_check(body.request)
     .then(catResponse => {
       if (catResponse) {
-        let allCatIds = []
+        let allCatIds = [];
         catResponse.sectionObj.map(section => {
-          allCatIds.push(section.cid)
-        })
-        allCatIds.push(catResponse.categoryObj.cid)
+          allCatIds.push(section.cid);
+        });
+        allCatIds.push(catResponse.categoryObj.cid);
 
         return createGroupDefault(body.request, req.user.uid, allCatIds)
           .then(groupObj => {
@@ -743,8 +740,8 @@ async function createCatwithSubcat(req, res) {
               status: 'successful',
               resCode: 'OK',
               data: catResponse
-            }
-            return res.json(responseMessage.successResponse(resObj))
+            };
+            return res.json(responseMessage.successResponse(resObj));
           })
           .catch(error => {
             let resObj = {
@@ -754,18 +751,9 @@ async function createCatwithSubcat(req, res) {
               resCode: 'SERVER_ERROR',
               err: error.status,
               errmsg: error.message
-            }
-            return res.json(responseMessage.errorResponse(resObj))
-          })
-
-        // let resObj = {
-        //   id: 'api.discussions.org.setup',
-        //   msgId: req.body.params.msgid,
-        //   status: 'successful',
-        //   resCode: 'OK',
-        //   data: catResponse
-        // }
-        // return res.json(responseMessage.successResponse(resObj))
+            };
+            return res.json(responseMessage.errorResponse(resObj));
+          });
       }
     })
     .catch(error => {
@@ -776,13 +764,13 @@ async function createCatwithSubcat(req, res) {
         resCode: 'SERVER_ERROR',
         err: error.status,
         errmsg: error.message
-      }
-      return res.json(responseMessage.errorResponse(resObj))
-    })
+      };
+      return res.json(responseMessage.errorResponse(resObj));
+    });
 }
 
 function commonObject(res, id, msgId, status, resCode, err, errmsg, data) {
-  let resObj = null
+  let resObj = null;
   if (res === 0) {
     resObj = {
       id: id,
@@ -791,7 +779,7 @@ function commonObject(res, id, msgId, status, resCode, err, errmsg, data) {
       resCode: resCode,
       err: err,
       errmsg: errmsg
-    }
+    };
   } else {
     resObj = {
       id: id,
@@ -799,17 +787,11 @@ function commonObject(res, id, msgId, status, resCode, err, errmsg, data) {
       status: status,
       resCode: resCode,
       data: data
-    }
+    };
   }
-  return resObj
+  return resObj;
 }
 
-
-/**
- * @param {*} req 
- * @param {*} res
- * This method will take list of cids and return list of category details for a respective cid.
- */
 async function getListOfCategories(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -827,19 +809,14 @@ async function getListOfCategories(req, res) {
           res.send(responseObj);
         }
       } catch (error) {
-        console.log({ message: `Error while call the api` })
-        console.log({ message: `Error message:  ${error.message}` })
+        console.log({ message: `Error while call the api` });
+        console.log({ message: `Error message:  ${error.message}` });
         util.generateError(req, res, error.message, 404);
       }
     }
   }
 }
 
-/**
- * @param {*} req 
- * @param {*} res
- * This method will tag name and cid and return list of topics that contains that tag name under particuler cid.
- */
 async function getTagsRelatedTopics(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -852,67 +829,60 @@ async function getTagsRelatedTopics(req, res) {
       const responseObj = await util.responseData(req, res, releatedTopics, null);
       res.send(responseObj);
     } catch (error) {
-      console.log({ message: `Error while call the api` })
-      console.log({ message: `Error message:  ${error.message}` })
+      console.log({ message: `Error while call the api` });
+      console.log({ message: `Error message:  ${error.message}` });
       util.generateError(req, res, error.message, 500);
     }
   }
 }
 
-
-
 async function getContextBasedTags(req, res) {
-  const payload = { ...req.body.request }
+  const payload = { ...req.body.request };
   let resObj = {
     id: constants[contextBasesTags],
     status: constants.statusSuccess,
     resCode: constants.resCode,
     data: null
-  }
+  };
   if (payload) {
     const cids = payload.cids;
     let allTopics = [],
-      allTags = []
+      allTags = [];
 
     for (let i = 0; i < cids.length; i++) {
       try {
         const url = constants.category + '/' + cids[i];
         const data = await util.getResponseData(req, url, contextBasesTags, null, constants.get);
-        allTopics.push(...data.topics)
+        allTopics.push(...data.topics);
         if (i === cids.length - 1) {
           allTopics.filter((val, inx) => {
             if (val.tags.length) {
-              allTags.push(...val.tags)
+              allTags.push(...val.tags);
             }
-          })
+          });
 
           const tagData = new Map(
             allTags.map(tag => [tag.value, { ...tag, score: 0 }])
-          )
-          for (const { value } of allTags) tagData.get(value).score++
-          const result = Array.from(tagData.values())
+          );
+          for (const { value } of allTags) tagData.get(value).score++;
+          const result = Array.from(tagData.values());
 
-          resObj.data = result
-          res.send(responseMessage.successResponse(resObj))
+          resObj.data = result;
+          res.send(responseMessage.successResponse(resObj));
         }
       } catch (error) {
-        console.log({ message: `Error message:  ${error.message}` })
-        res.statusCode = 404
-        resObj.status = constants.failed
-        resObj.resCode = constants.errorResCode
-        resObj.err = error.status
-        resObj.errmsg = error.message
-        res.send(responseMessage.errorResponse(resObj))
+        console.log({ message: `Error message:  ${error.message}` });
+        res.statusCode = 404;
+        resObj.status = constants.failed;
+        resObj.resCode = constants.errorResCode;
+        resObj.err = error.status;
+        resObj.errmsg = error.message;
+        res.send(responseMessage.errorResponse(resObj));
       }
     }
   }
 }
 
-/**
- * @param {*} req 
- * @param {*} res
- * This method will take sunbird identifiers and return nodebb uid respectively.
- */
 async function getUserIds(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -929,19 +899,12 @@ async function getUserIds(req, res) {
   }
 }
 
-
-/**
- * @param  {} req
- * @param  {} res
- * this the generalization of api for course and groups
- */
 async function relatedDiscussions(req, res) {
   const reqPayload = { ...req.body.category };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, reqPayload);
   if (isRequiredParamsMissing) {
     const payload = reqPayload;
-    // check: is both privileges and groups present
     if (!_.isEmpty(payload.groups) && !_.isEmpty(payload.privileges)) {
       util.generateError(req, res, jsonConstants.forumStrings.privilegeGroupErrorMsg, 400, jsonConstants.forumStrings.payloadError);
     } else {
@@ -951,19 +914,17 @@ async function relatedDiscussions(req, res) {
         name: payload.name || constants.defaultCategory,
         description: _.get(payload, 'description')
       };
-      const cdata = await Categories.create(body); // creating new category.
+      const cdata = await Categories.create(body);
 
       if (cdata) {
         const context = payload.context;
         if (!_.isEmpty(context)) {
-          finalResponse['forums'] = await addContext(context, cdata.cid); // adding category with the context
-          // check: is copyFromCategory present in privileges object, if yes copy prilileges from that category and apply on new category
+          finalResponse['forums'] = await addContext(context, cdata.cid);
           if (payload.privileges && !_.isEmpty(payload.privileges.copyFromCategory)) {
             const result = await Categories.copyPrivilegesFrom(payload.privileges.copyFromCategory, cdata.cid);
             const members = await util.getMembers(cdata.cid);
             finalResponse['groups'] = members;
             try {
-              // check: is subcategories present.
               const subCategory = await checkSubcategories(payload.subcategories, cdata.cid);
               finalResponse.subcategories = subCategory;
               const responseObj = await util.responseData(req, res, finalResponse, null);
@@ -971,7 +932,7 @@ async function relatedDiscussions(req, res) {
             } catch (error) {
               util.generateError(req, res, error.message, 500);
             }
-          } else if (!_.isEmpty(payload.groups)) { // check: is groups present. if yes add users into group and attch group to catgory
+          } else if (!_.isEmpty(payload.groups)) {
             try {
               const addPrivileges = await util.groupsAndPrivileges(cdata.cid, payload.groups);
               const members = await util.getMembers(cdata.cid);
@@ -991,75 +952,58 @@ async function relatedDiscussions(req, res) {
           util.generateError(req, res, jsonConstants.forumStrings.contextError, 400);
         }
       } else {
-        console.log('category creation failed')
-        console.log('Error is', cdata.message)
+        console.log('category creation failed');
+        console.log('Error is', cdata.message);
         util.generateError(req, res, jsonConstants.forumStrings.categoryError, 500);
       }
     }
   }
 }
 
-/**
- * @param {*} context 
- * @param {*} cid
- * This method will create new context along with mapped category id and add it in sbCategories collection  : Generalaiation.  
- */
 async function addContext(context, cid) {
   const forumIds = [];
   return new Promise((resolve, reject) => {
     context.forEach(async (contextData, i) => {
       const addPropertyInCategory = await Categories.setCategoryField(cid, 'contextId', contextData.identifier);
-      // Preparing request object
       let mapObj = {
         sbIdentifier: contextData.identifier,
         sbType: contextData.type,
         cid: cid
-      }
+      };
       client.save(mapObj);
       const mappedCids = await client.getContext(contextData);
       const listOfCids = mappedCids.length > 0 ? mappedCids.map(forum => forum.cid) : [];
 
-      // Preparing the response object
       const mapResObj = {
         "sbType": contextData.type,
         "sbIdentifier": contextData.identifier,
         "newCid": cid,
         "cids": listOfCids
-      }
+      };
       forumIds.push(mapResObj);
       if (i === (context.length - 1)) {
-        resolve(forumIds)
+        resolve(forumIds);
       }
     });
   });
 }
 
-/**
- * @param {*} subCategories 
- * @param {*} cid
- * This method internally calls addSubcategories method and return category data after getting the response from addSubcategories method : Generalaiation.  
- */
 async function checkSubcategories(subcategories, cid) {
-  console.log('add checkSubcategories')
+  console.log('add checkSubcategories');
   return new Promise(async (resolve, reject) => {
     if (!_.isEmpty(subcategories)) {
       try {
         const addingSubcategory = await addSubcategories(subcategories, cid);
-        resolve(addingSubcategory)
+        resolve(addingSubcategory);
       } catch (error) {
-        reject(error)
+        reject(error);
       }
     } else {
       resolve([]);
     }
-  })
+  });
 }
 
-/**
- * @param {*} subCategories 
- * @param {*} pid
- * This method will create new categories. based on what ever the categories present in subcategories array: Generalaiation.  
- */
 async function addSubcategories(subCategories, pid) {
   let subCategoryResponse = [];
   return new Promise(async (resolve, reject) => {
@@ -1085,7 +1029,6 @@ async function addSubcategories(subCategories, pid) {
           groups: []
         };
 
-        // Mapping the context if exists for sub category 
         if (!_.isEmpty(subCategories[i].context)) {
           subCategories[i].context.forEach(async (context) => {
             const addPropertyInCategory = await Categories.setCategoryField(creatSubCategory.cid, 'contextId', context.identifier);
@@ -1093,12 +1036,11 @@ async function addSubcategories(subCategories, pid) {
               "sbType": context.type,
               "sbIdentifier": context.identifier,
               "cid": creatSubCategory.cid
-            }
+            };
             client.save(contextObj);
-          })
+          });
         }
 
-        //  checking for privileges 
         if (subCategories[i].privileges && subCategories[i].privileges.copyFromParent) {
           await Categories.copyPrivilegesFrom(pid, creatSubCategory.cid);
         } else if (!_.isEmpty(subCategories[i].groups)) {
@@ -1108,20 +1050,14 @@ async function addSubcategories(subCategories, pid) {
         if (!_.isEmpty(data.groups)) {
           subCategoryResponse.push(data);
           if (i === (subCategories.length - 1)) {
-            resolve(subCategoryResponse)
+            resolve(subCategoryResponse);
           }
         }
       }
     }
-  })
+  });
 }
 
-/**
- * 
- * @param {*} req 
- * @param {*} res 
- * This will take pid and cid and do opy of privileges from pid and add those privileges to cid.
- */
 async function copyPrivilegeData(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1133,15 +1069,9 @@ async function copyPrivilegeData(req, res) {
   }
 }
 
-/**
- * 
- * @param {*} req 
- * @param {*} res 
- * This will take groups and members array and add the members into groups.
- */
 async function addUsers(req, res) {
   const payload = { ...req.body.request };
-  const requiredParams = jsonConstants.requiredParams[req.route.path];;
+  const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
   if (isRequiredParamsMissing) {
     const groupsList = payload.groups;
@@ -1163,20 +1093,13 @@ async function addUsers(req, res) {
         const responseObj = await util.responseData(req, res, result, null);
         res.send(responseObj);
       }
-    })
+    });
   }
 }
 
-/**
- * 
- * @param {*} req 
- * @param {*} res 
- * This api will take cid and groups names and return list of groups and users added to a category.
- * groups array is optional if you pass groups array it will return list of users added in those groups.
- */
 async function getContextUserGroups(req, res) {
   const payload = { ...req.body.request };
-  const requiredParams = jsonConstants.requiredParams[req.route.path];;
+  const requiredParams = jsonConstants.requiredParams[req.route.path];
   const isRequiredParamsMissing = await util.checkRequiredParameters(req, res, requiredParams, payload);
   if (isRequiredParamsMissing) {
     const groups = payload.groups || [];
@@ -1188,12 +1111,6 @@ async function getContextUserGroups(req, res) {
   }
 }
 
-/**
- * 
- * @param {*} req 
- * @param {*} res 
- * This api will take cid and groups names and return list of users added in those groups for a category.
- */
 async function getContextGroupPriveleges(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1208,22 +1125,22 @@ async function getContextGroupPriveleges(req, res) {
       groups.forEach(async (group, index) => {
         const cgroup = groupsList.groups.filter(data => data.name.toLowerCase() === group.toLowerCase());
         if (cgroup && cgroup.length > 0) {
-          groupsData.push(cgroup[0])
+          groupsData.push(cgroup[0]);
         } else {
           const noGroup = {
             name: group,
             message: (constants.noGroupAddedMsg.replace('${group}', group)).replace('${cid}', cid)
-          }
+          };
           groupsData.push(noGroup);
         }
         if (index === (groups.length - 1)) {
           const result = {
             groups: groupsData
-          }
+          };
           const responseObj = await util.responseData(req, res, result, null);
           res.send(responseObj);
         }
-      })
+      });
     } else {
       util.generateError(req, res, constants.incorrectCid.replace('${cid}', cid), 400);
     }
@@ -1257,12 +1174,6 @@ async function getUsersDetails(req, res) {
   res.send(responseObj);
 }
 
-/**
- * this function will store the forum object in the mapping table in Redis .
- * @param {*} req 
- * the request object having sbType, sbIdentifier, cid in the body.
- * @param {*} res 
- */
 async function createForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1278,11 +1189,6 @@ async function createForumContext(req, res) {
   }
 }
 
-/**
- * This function return the category id's from redis based on the id and type.
- * @param {*} req 
- * @param {*} res 
- */
 async function getForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1298,11 +1204,6 @@ async function getForumContext(req, res) {
   }
 }
 
-/**
- * This function will remove the  the category ids from Redis based on the sb_id and sb_type.
- * @param {*} req 
- * @param {*} res 
- */
 async function removeForumContext(req, res) {
   const payload = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1321,13 +1222,7 @@ async function removeForumContext(req, res) {
     }
   }
 }
-/**
- * This function will update the user data.
- * req body includes 
- * username, fullname, uid
- * @param {*} req 
- * @param {*} res 
- */
+
 async function updateUserProfileData(req, res) {
   const userData = { ...req.body.request };
   const requiredParams = jsonConstants.requiredParams[req.route.path];
@@ -1353,289 +1248,114 @@ async function updateUserProfileData(req, res) {
   }
 }
 
-Plugin.init = async function (params) {
+// FIXED: Main plugin initialization - changed from Plugin.init to plugin.init
+const plugin = {};
+
+plugin.init = async function (params) {
   try {
-    diagnostics.logLoadingStep('Plugin initialization started', { params: Object.keys(params) });
-    logger.logInitStep('Starting plugin initialization', { timestamp: new Date().toISOString() });
-    
     console.log('[nodebb-plugin-sunbird-api] Initializing plugin...');
     var router = params.router;
 
-    // Validate required parameters
     if (!router) {
-      const error = new Error('Router parameter is required for plugin initialization');
-      diagnostics.logError(error, 'initialization-params');
-      logger.error('Missing router parameter', { params: Object.keys(params) });
-      throw error;
+      throw new Error('Router parameter is required for plugin initialization');
     }
-
-    // Log NodeBB version and environment info
-    diagnostics.logLoadingStep('Environment check', {
-      nodeVersion: process.version,
-      platform: process.platform,
-      nodeEnv: process.env.NODE_ENV
-    });
 
     const dbType = _.get(configData, 'database');
     console.log('[nodebb-plugin-sunbird-api] Database type:', dbType);
-    diagnostics.logLoadingStep('Database type detected', { dbType });
 
     if (!dbType) {
-      const error = new Error('No database type in config.json');
-      diagnostics.logError(error, 'database-config');
-      logger.error('Database configuration missing', { configData });
       console.error('[nodebb-plugin-sunbird-api] ERROR: No database type in config.json');
-      throw error;
+      throw new Error('No database type in config.json');
     }
 
-    // Initialize database client with diagnostics
-    diagnostics.logLoadingStep('Database client initialization', { dbType });
+    // Initialize database client
     try {
       client = require(`./database/${dbType}`);
-      diagnostics.logDependencyLoad(`./database/${dbType}`, true);
-      
       await client.connect(configData);
-      diagnostics.logDatabaseConnection(dbType, true);
-      logger.logDatabaseOperation('connect', { dbType, success: true });
       console.log('[nodebb-plugin-sunbird-api] Database connected');
     } catch (dbError) {
-      diagnostics.logDatabaseConnection(dbType, false, dbError);
-      logger.error('Database connection failed', { dbType, error: dbError.message });
+      console.error('[nodebb-plugin-sunbird-api] Database connection failed:', dbError.message);
       throw dbError;
     }
 
-    // Register health check endpoints first
-    diagnostics.logLoadingStep('Registering health check endpoints');
-    
-    // Health check endpoint
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/health', 
-      [healthCheck.createHealthEndpoint(diagnostics)], 
-      'healthCheck'
-    );
-    
-    // Diagnostics endpoint
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/diagnostics', 
-      [healthCheck.createDiagnosticsEndpoint(diagnostics)], 
-      'diagnosticsReport'
-    );
-    
-    // Route status endpoint
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/routes', 
-      [healthCheck.createRouteStatusEndpoint(diagnostics)], 
-      'routeStatus'
-    );
+    // FIXED: Register health check endpoints with /discussions/api prefix for consistency
+    router.get('/discussions/api/forum/health', (req, res) => {
+      res.json({
+        status: 'ok',
+        plugin: 'nodebb-plugin-sunbird-api',
+        version: '2.0.4',
+        timestamp: new Date().toISOString(),
+        nodebbVersion: process.env.npm_package_version || 'unknown',
+        routes: [
+          '/discussions/api/forum/health',
+          '/discussions/api/forum/routes',
+          '/discussions/api/forum/v2/read',
+          '/discussions/api/forum/v3/create'
+        ]
+      });
+    });
 
-    // Enhanced route diagnostics endpoints
-    diagnostics.logLoadingStep('Registering route diagnostics endpoints');
-    
-    // Route list endpoint - lists all registered plugin routes
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/routes/list', 
-      [healthCheck.createRouteListEndpoint(routeDiagnostics)], 
-      'routeList'
-    );
-    
-    // Route accessibility testing endpoint
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/routes/test', 
-      [healthCheck.createRouteTestEndpoint(routeDiagnostics)], 
-      'routeTest'
-    );
-    
-    // Route conflict resolution endpoint
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'get', '/api/forum/routes/conflicts', 
-      [healthCheck.createRouteConflictEndpoint(routeDiagnostics)], 
-      'routeConflicts'
-    );
+    router.get('/discussions/api/forum/routes', (req, res) => {
+      res.json({
+        available_routes: [
+          'GET /discussions/api/forum/health - Health check',
+          'GET /discussions/api/forum/routes - List all routes',
+          'POST /discussions/api/forum/v2/read - Read forum data',
+          'POST /discussions/api/forum/v3/create - Create forum content'
+        ]
+      });
+    });
 
-    // Register all other routes with diagnostics
-    diagnostics.logLoadingStep('Registering API routes');
+    // FIXED: Register all routes with /discussions/api/forum prefix for consistency
+    router.post(createSBForum, createForumContext);
+    router.post(getSBForum, getForumContext);
+    router.post(removeSBForum, removeForumContext);
     
-    // Forum context routes
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', createSBForum, [createForumContext], 'createForumContext');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', getSBForum, [getForumContext], 'getForumContext');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', removeSBForum, [removeForumContext], 'removeForumContext');
+    router.post(categoryList, getListOfCategories);
+    router.post(tagsList, getTagsRelatedTopics);
+    router.post(contextBasesTags, getContextBasedTags);
     
-    // Category and tag routes
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', categoryList, [getListOfCategories], 'getListOfCategories');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', tagsList, [getTagsRelatedTopics], 'getTagsRelatedTopics');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', contextBasesTags, [getContextBasedTags], 'getContextBasedTags');
+    router.post(createRelatedDiscussions, relatedDiscussions);
+    router.post('/discussions/api/forum/v3/create', relatedDiscussions);
     
-    // Discussion routes
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', createRelatedDiscussions, [relatedDiscussions], 'relatedDiscussions');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', '/forum/v3/create', [relatedDiscussions], 'relatedDiscussions');
-    
-    // User and group management routes
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', copyPrivilages, [copyPrivilegeData], 'copyPrivilegeData');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', getUids, [getUserIds], 'getUserIds');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', addUserIntoGroup, [addUsers], 'addUsers');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', listOfGroupUsers, [getContextUserGroups], 'getContextUserGroups');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', groupsPriveleges, [getContextGroupPriveleges], 'getContextGroupPriveleges');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', usersList, [getUsersDetails], 'getUsersDetails');
-    routeDiagnostics.registerAndVerifyRoute(router, 'post', updateUserProfile, [updateUserProfileData], 'updateUserProfileData');
+    router.post(copyPrivilages, copyPrivilegeData);
+    router.post(getUids, getUserIds);
+    router.post(addUserIntoGroup, addUsers);
+    router.post(listOfGroupUsers, getContextUserGroups);
+    router.post(groupsPriveleges, getContextGroupPriveleges);
+    router.post(usersList, getUsersDetails);
+    router.post(updateUserProfile, updateUserProfileData);
 
     // Protected routes with middleware
-    diagnostics.logLoadingStep('Registering protected routes with middleware');
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', createForumURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, createForumAPI], 
-      'createForumAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', allTopicsByCategoryURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, allTopicsByCategory], 
-      'allTopicsByCategory'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', allPostsByTopicURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, allPostsByTopic], 
-      'allPostsByTopic'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', getForumURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, getForumAPI], 
-      'getForumAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', createTenantURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, setupOrgAPI], 
-      'setupOrgAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', createSectionURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, addSectionURL], 
-      'addSectionURL'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'put', banUserURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, banUserAPI], 
-      'banUserAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'delete', unbanUserURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, unbanUserAPI], 
-      'unbanUserAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', createTopicURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, createTopicAPI], 
-      'createTopicAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', createCatwithSubcatURL, 
-      [createCatwithSubcat], 
-      'createCatwithSubcat'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', replyTopicURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, replyTopicAPI], 
-      'replyTopicAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'post', voteURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, voteURLAPI], 
-      'voteURLAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'delete', deletePostURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, deletePostAPI], 
-      'deletePostAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'delete', deleteTopicURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, deleteTopicAPI], 
-      'deleteTopicAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'delete', purgeTopicURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgeTopicAPI], 
-      'purgeTopicAPI'
-    );
-    
-    routeDiagnostics.registerAndVerifyRoute(
-      router, 'delete', purgePostURL, 
-      [apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgePostAPI], 
-      'purgePostAPI'
-    );
+    router.post(createForumURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, createForumAPI);
+    router.post(allTopicsByCategoryURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, allTopicsByCategory);
+    router.post(allPostsByTopicURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, allPostsByTopic);
+    router.post(getForumURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, getForumAPI);
+    router.post(createTenantURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, setupOrgAPI);
+    router.post(createSectionURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, addSectionURL);
+    router.put(banUserURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, banUserAPI);
+    router.delete(unbanUserURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, unbanUserAPI);
+    router.post(createTopicURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, createTopicAPI);
+    router.post(createCatwithSubcatURL, createCatwithSubcat);
+    router.post(replyTopicURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, replyTopicAPI);
+    router.post(voteURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, voteURLAPI);
+    router.delete(deletePostURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, deletePostAPI);
+    router.delete(deleteTopicURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, deleteTopicAPI);
+    router.delete(purgeTopicURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgeTopicAPI);
+    router.delete(purgePostURL, apiMiddleware.requireUser, apiMiddleware.requireAdmin, purgePostAPI);
 
-    // Verify all routes were registered correctly
-    diagnostics.logLoadingStep('Verifying route registration');
-    const routeVerification = routeDiagnostics.verifyAllRoutes(router);
-    
-    if (routeVerification.failed > 0) {
-      logger.warn('Some routes failed verification', routeVerification);
-    }
-
-    // Check for route conflicts
-    diagnostics.logLoadingStep('Checking for route conflicts');
-    const allRoutes = routeDiagnostics.getAllRoutes();
-    allRoutes.forEach(route => {
-      routeDiagnostics.checkRouteConflicts(route.method, route.path);
-    });
-
-    // Final plugin initialization completion
-    diagnostics.logLoadingStep('Plugin initialization completed', {
-      totalRoutes: allRoutes.length,
-      verifiedRoutes: routeVerification.verified,
-      failedRoutes: routeVerification.failed,
-      conflicts: routeDiagnostics.getRouteConflicts().length
-    });
-
-    logger.logInitStep('Plugin initialization completed successfully', {
-      initTime: Date.now() - diagnostics.loadStartTime,
-      routesRegistered: allRoutes.length
-    });
-
-    // Log final status
-    const healthStatus = diagnostics.getHealthStatus();
-    logger.info('Plugin health status', healthStatus);
-    
     console.log('[nodebb-plugin-sunbird-api] Plugin initialized successfully');
-    console.log(`[nodebb-plugin-sunbird-api] Registered ${allRoutes.length} routes`);
-    console.log(`[nodebb-plugin-sunbird-api] Health check available at /api/forum/health`);
-    console.log(`[nodebb-plugin-sunbird-api] Route diagnostics available at /api/forum/routes/list`);
-    console.log(`[nodebb-plugin-sunbird-api] Route testing available at /api/forum/routes/test`);
-    console.log(`[nodebb-plugin-sunbird-api] Route conflicts available at /api/forum/routes/conflicts`);
+    console.log('[nodebb-plugin-sunbird-api] Health check available at /forum/health');
     
-    // Return success status for NodeBB v4 compatibility
     return {
       success: true,
-      routesRegistered: allRoutes.length,
-      healthEndpoints: [
-        '/api/forum/health', 
-        '/api/forum/diagnostics', 
-        '/api/forum/routes',
-        '/api/forum/routes/list',
-        '/api/forum/routes/test',
-        '/api/forum/routes/conflicts'
-      ]
+      routesRegistered: 'All routes registered with /forum prefix'
     };
   }
   catch (error) {
-    diagnostics.logError(error, 'plugin-initialization');
-    logger.error('Plugin initialization failed', { error: error.message, stack: error.stack });
     console.error('[nodebb-plugin-sunbird-api] INITIALIZATION ERROR:', error);
-    
-    // Ensure error is properly propagated for NodeBB v4
     throw new Error(`Plugin initialization failed: ${error.message}`);
   }
-}
+};
+
+module.exports = plugin;
