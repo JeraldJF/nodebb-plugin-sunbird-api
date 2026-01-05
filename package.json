@@ -1,7 +1,7 @@
 {
   "name": "nodebb-plugin-sunbird-api",
   "version": "2.0.5",
-  "description": "",
+  "description": "NodeBB Plugin with APIs for Sunbird integration - NodeBB v4.7.x compatible",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,6 +15,7 @@
     "async": "^3.2.0",
     "axios": "^1.7.0",
     "body-parser": "^1.19.0",
+    "connect-multiparty": "^2.2.0",
     "express": "^4.22.1",
     "jsonwebtoken": "^9.0.0",
     "lodash": "^4.17.20",
