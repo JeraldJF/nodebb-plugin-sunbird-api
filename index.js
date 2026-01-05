@@ -55,37 +55,37 @@ const {
   replyTopic
 } = require('./library');
 
-// Constants and URLs - FIXED: Use /discussions/api prefix with clean paths
-const createTenantURL = '/discussions/api/org/v1/setup';
-const createForumURL = '/discussions/api/forum/v1/create';
-const createSectionURL = '/discussions/api/org/v1/sections/add';
-const getForumURL = '/discussions/api/forum/v1/read';
-const categoryList = '/discussions/api/category/list';
-const tagsList = '/discussions/api/tags/list';
-const contextBasesTags = '/discussions/api/forum/tags';
-const allTopicsByCategoryURL = '/discussions/api/category/v1/topic';
-const allPostsByTopicURL = '/discussions/api/topic/v1/posts';
-const replyTopicURL = '/discussions/api/topic/v1/reply';
-const createTopicURL = '/discussions/api/topic/v1/create';
-const voteURL = '/discussions/api/:pid/vote';
-const deletePostURL = '/discussions/api/post/v1/delete/:pid';
-const deleteTopicURL = '/discussions/api/topic/v1/delete/:tid';
-const purgePostURL = '/discussions/api/post/v1/purge/:pid';
-const purgeTopicURL = '/discussions/api/topic/v1/purge/:tid';
-const banUserURL = '/discussions/api/user/v1/ban';
-const unbanUserURL = '/discussions/api/user/v1/unban';
-const createCatwithSubcatURL = '/discussions/api/create';
-const createSBForum = '/discussions/api/forum/v2/create';
-const getSBForum = '/discussions/api/forum/v2/read';
-const removeSBForum = '/discussions/api/forum/v2/remove';
-const createRelatedDiscussions = '/discussions/api/forum/v3/create';
-const copyPrivilages = '/discussions/api/privileges/v2/copy';
-const getUids = '/discussions/api/forum/v2/uids';
-const usersList = '/discussions/api/forum/v2/users/details';
-const addUserIntoGroup = '/discussions/api/forum/v3/group/membership';
-const groupsPriveleges = '/discussions/api/forum/v3/category/:cid/privileges';
-const listOfGroupUsers = '/discussions/api/forum/v3/groups/users';
-const updateUserProfile = '/discussions/api/forum/v3/user/profile';
+// Constants and URLs - FIXED: Remove /discussions prefix (NodeBB adds it automatically)
+const createTenantURL = '/api/org/v1/setup';
+const createForumURL = '/api/forum/v1/create';
+const createSectionURL = '/api/org/v1/sections/add';
+const getForumURL = '/api/forum/v1/read';
+const categoryList = '/api/category/list';
+const tagsList = '/api/tags/list';
+const contextBasesTags = '/api/forum/tags';
+const allTopicsByCategoryURL = '/api/category/v1/topic';
+const allPostsByTopicURL = '/api/topic/v1/posts';
+const replyTopicURL = '/api/topic/v1/reply';
+const createTopicURL = '/api/topic/v1/create';
+const voteURL = '/api/:pid/vote';
+const deletePostURL = '/api/post/v1/delete/:pid';
+const deleteTopicURL = '/api/topic/v1/delete/:tid';
+const purgePostURL = '/api/post/v1/purge/:pid';
+const purgeTopicURL = '/api/topic/v1/purge/:tid';
+const banUserURL = '/api/user/v1/ban';
+const unbanUserURL = '/api/user/v1/unban';
+const createCatwithSubcatURL = '/api/create';
+const createSBForum = '/api/forum/v2/create';
+const getSBForum = '/api/forum/v2/read';
+const removeSBForum = '/api/forum/v2/remove';
+const createRelatedDiscussions = '/api/forum/v3/create';
+const copyPrivilages = '/api/privileges/v2/copy';
+const getUids = '/api/forum/v2/uids';
+const usersList = '/api/forum/v2/users/details';
+const addUserIntoGroup = '/api/forum/v3/group/membership';
+const groupsPriveleges = '/api/forum/v3/category/:cid/privileges';
+const listOfGroupUsers = '/api/forum/v3/groups/users';
+const updateUserProfile = '/api/forum/v3/user/profile';
 
 var constants = {
   'name': 'sunbird-oidc',
@@ -111,7 +111,7 @@ var constants = {
   'post': 'POST',
   'get': 'GET',
   'put': 'PUT',
-  'apiPrefix': '/discussions/api',
+  'apiPrefix': '/api',
   'emptyGroupsMsg': "Groups and CID should not be empty",
   'incorrectCid': 'Category id ${cid} is not exists, Please use correct cid',
   'emptyDataFOrGroupsAndMembers': 'Groups and members should not be empty',
@@ -1294,8 +1294,8 @@ plugin.init = async function (params) {
       // Don't throw error - continue with route registration
     }
 
-    // FIXED: Register health check endpoints with /discussions/api prefix for consistency
-    router.get('/discussions/api/forum/health', (req, res) => {
+    // FIXED: Register health check endpoints (NodeBB adds /discussions prefix automatically)
+    router.get('/api/forum/health', (req, res) => {
       res.json({
         status: 'ok',
         plugin: 'nodebb-plugin-sunbird-api',
@@ -1304,34 +1304,34 @@ plugin.init = async function (params) {
         nodebbVersion: process.env.npm_package_version || 'unknown',
         database: dbType,
         routes: [
-          '/discussions/api/forum/health',
-          '/discussions/api/forum/routes',
-          '/discussions/api/forum/v1/create',
-          '/discussions/api/forum/v1/read',
-          '/discussions/api/forum/v2/create',
-          '/discussions/api/forum/v2/read',
-          '/discussions/api/forum/v3/create'
+          '/api/forum/health',
+          '/api/forum/routes',
+          '/api/forum/v1/create',
+          '/api/forum/v1/read',
+          '/api/forum/v2/create',
+          '/api/forum/v2/read',
+          '/api/forum/v3/create'
         ]
       });
     });
 
-    router.get('/discussions/api/forum/routes', (req, res) => {
+    router.get('/api/forum/routes', (req, res) => {
       res.json({
         available_routes: [
-          'GET /discussions/api/forum/health - Health check',
-          'GET /discussions/api/forum/routes - List all routes',
-          'POST /discussions/api/forum/v1/create - Create forum (v1)',
-          'POST /discussions/api/forum/v1/read - Read forum (v1)',
-          'POST /discussions/api/forum/v2/create - Create forum (v2)',
-          'POST /discussions/api/forum/v2/read - Read forum (v2)',
-          'POST /discussions/api/forum/v3/create - Create forum (v3)',
-          'POST /discussions/api/topic/v1/create - Create topic',
-          'POST /discussions/api/topic/v1/reply - Reply to topic'
+          'GET /api/forum/health - Health check',
+          'GET /api/forum/routes - List all routes',
+          'POST /api/forum/v1/create - Create forum (v1)',
+          'POST /api/forum/v1/read - Read forum (v1)',
+          'POST /api/forum/v2/create - Create forum (v2)',
+          'POST /api/forum/v2/read - Read forum (v2)',
+          'POST /api/forum/v3/create - Create forum (v3)',
+          'POST /api/topic/v1/create - Create topic',
+          'POST /api/topic/v1/reply - Reply to topic'
         ]
       });
     });
 
-    // FIXED: Register all routes with /discussions/api/forum prefix for consistency
+    // FIXED: Register all routes (NodeBB adds /discussions prefix automatically)
     router.post(createSBForum, createForumContext);
     router.post(getSBForum, getForumContext);
     router.post(removeSBForum, removeForumContext);
@@ -1371,9 +1371,9 @@ plugin.init = async function (params) {
 
     console.log('[nodebb-plugin-sunbird-api] Plugin initialized successfully');
     console.log('[nodebb-plugin-sunbird-api] Routes registered:');
-    console.log('[nodebb-plugin-sunbird-api] - Health check: /discussions/api/forum/health');
-    console.log('[nodebb-plugin-sunbird-api] - Forum create: /discussions/api/forum/v1/create');
-    console.log('[nodebb-plugin-sunbird-api] - Forum read: /discussions/api/forum/v1/read');
+    console.log('[nodebb-plugin-sunbird-api] - Health check: /api/forum/health');
+    console.log('[nodebb-plugin-sunbird-api] - Forum create: /api/forum/v1/create');
+    console.log('[nodebb-plugin-sunbird-api] - Forum read: /api/forum/v1/read');
     
     return {
       success: true,
