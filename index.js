@@ -927,12 +927,11 @@ async function relatedDiscussions(req, res) {
       const cdata = await Categories.create(body);
 
       if (cdata) {
-        const context = payload.context;
-        
-        // FIXED: Set default privileges if none specified
+        // FIXED: Set default privileges IMMEDIATELY after category creation
+        // This ensures ALL new categories get proper privileges, regardless of context
         if (_.isEmpty(payload.privileges) && _.isEmpty(payload.groups)) {
           try {
-            // Try to copy privileges from General Discussion (cid: 1) or parent category
+            // Try to copy privileges from parent category or General Discussion
             const parentCid = payload.pid || 1;
             await Categories.copyPrivilegesFrom(parentCid, cdata.cid);
             console.log(`[nodebb-plugin-sunbird-api] Default privileges copied from category ${parentCid} to ${cdata.cid}`);
@@ -943,6 +942,7 @@ async function relatedDiscussions(req, res) {
           }
         }
         
+        const context = payload.context;
         if (!_.isEmpty(context)) {
           finalResponse['forums'] = await addContext(context, cdata.cid);
           if (payload.privileges && !_.isEmpty(payload.privileges.copyFromCategory)) {
@@ -974,7 +974,11 @@ async function relatedDiscussions(req, res) {
             res.send(responseObj);
           }
         } else {
-          util.generateError(req, res, jsonConstants.forumStrings.contextError, 400);
+          // FIXED: Don't error when no context - just return success with basic category info
+          finalResponse.cid = cdata.cid;
+          finalResponse.name = cdata.name;
+          const responseObj = await util.responseData(req, res, finalResponse, null);
+          res.send(responseObj);
         }
       } else {
         console.log('category creation failed');
