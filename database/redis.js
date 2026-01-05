@@ -15,7 +15,7 @@ const redis = {
             });
             
             console.log('Redis db connection', JSON.stringify(connectionObj));
-            connectionObj.redis.database = parseInt(_.get(connectionObj, 'redis.database')) + 1;
+            connectionObj.redis.database = parseInt(_.get(connectionObj, 'redis.database'));
             
             const connection = await redisConnection.connect(connectionObj.redis);
             redisClient = {'client' : connection};
