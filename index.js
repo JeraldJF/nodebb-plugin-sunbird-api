@@ -928,6 +928,21 @@ async function relatedDiscussions(req, res) {
 
       if (cdata) {
         const context = payload.context;
+        
+        // FIXED: Set default privileges if none specified
+        if (_.isEmpty(payload.privileges) && _.isEmpty(payload.groups)) {
+          try {
+            // Try to copy privileges from General Discussion (cid: 1) or parent category
+            const parentCid = payload.pid || 1;
+            await Categories.copyPrivilegesFrom(parentCid, cdata.cid);
+            console.log(`[nodebb-plugin-sunbird-api] Default privileges copied from category ${parentCid} to ${cdata.cid}`);
+          } catch (error) {
+            // If no parent category exists, set basic privileges for registered users
+            console.log('[nodebb-plugin-sunbird-api] Setting basic privileges for registered users');
+            await privileges.categories.give(['topics:create', 'topics:read', 'read', 'posts:reply'], cdata.cid, 'registered-users');
+          }
+        }
+        
         if (!_.isEmpty(context)) {
           finalResponse['forums'] = await addContext(context, cdata.cid);
           if (payload.privileges && !_.isEmpty(payload.privileges.copyFromCategory)) {
