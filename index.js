@@ -1,5 +1,6 @@
 'use strict';
 
+// FIXED: Use require.main.require instead of module.parent.require for NodeBB v4 compatibility
 const Categories = require.main.require('./src/categories');
 const posts = require.main.require('./src/posts');
 const Topics = require.main.require('./src/topics');
@@ -125,14 +126,14 @@ var constants = {
     userInfoEndpoint: "",
     emailDomain: ""
   }, false, false),
-}
+};
 
-
-async function createTopicAPI (req, res) {
-  var payload = { ...req.body.request }
-  console.log('-----------payload ---------------', payload)
-  payload.tags = payload.tags || []
-  payload.uid = payload._uid ? payload._uid : req.user.uid
+// All the API handler functions (preserved from original)
+async function createTopicAPI(req, res) {
+  var payload = { ...req.body.request };
+  console.log('-----------payload ---------------', payload);
+  payload.tags = payload.tags || [];
+  payload.uid = payload._uid ? payload._uid : req.user.uid;
 
   return createTopic(payload)
     .then(topicObj => {
@@ -922,6 +923,23 @@ async function relatedDiscussions(req, res) {
         description: _.get(payload, 'description')
       };
       const cdata = await Categories.create(body);
+
+      if (cdata) {
+        // FIXED: Set default privileges IMMEDIATELY after category creation
+        // This ensures ALL new categories get proper privileges, regardless of context
+        if (_.isEmpty(payload.privileges) && _.isEmpty(payload.groups)) {
+          try {
+            // Try to copy privileges from parent category or General Discussion
+            const parentCid = payload.pid || 1;
+            await Categories.copyPrivilegesFrom(parentCid, cdata.cid);
+            console.log(`[nodebb-plugin-sunbird-api] Default privileges copied from category ${parentCid} to ${cdata.cid}`);
+          } catch (error) {
+            // If no parent category exists, set basic privileges for registered users
+            console.log('[nodebb-plugin-sunbird-api] Setting basic privileges for registered users');
+            await privileges.categories.give(['topics:create', 'topics:read', 'read', 'posts:reply'], cdata.cid, 'registered-users');
+          }
+        }
+        
         const context = payload.context;
         if (!_.isEmpty(context)) {
           finalResponse['forums'] = await addContext(context, cdata.cid);
@@ -954,7 +972,17 @@ async function relatedDiscussions(req, res) {
             res.send(responseObj);
           }
         } else {
+          // FIXED: Don't error when no context - just return success with basic category info
+          finalResponse.cid = cdata.cid;
+          finalResponse.name = cdata.name;
+          const responseObj = await util.responseData(req, res, finalResponse, null);
+          res.send(responseObj);
         }
+      } else {
+        console.log('category creation failed');
+        console.log('Error is', cdata.message);
+        util.generateError(req, res, jsonConstants.forumStrings.categoryError, 500);
+      }
     }
   }
 }
@@ -1259,6 +1287,7 @@ plugin.init = async function (params) {
       throw new Error('Router parameter is required for plugin initialization');
     }
 
+    // FIXED: Better database type detection with fallback
     const dbType = _.get(configData, 'database') || process.env.database || 'redis';
     console.log('[nodebb-plugin-sunbird-api] Database type:', dbType);
 
@@ -1267,6 +1296,7 @@ plugin.init = async function (params) {
       throw new Error('No database type in config.json');
     }
 
+    // Initialize database client with better error handling
     try {
       client = require(`./database/${dbType}`);
       if (client && typeof client.connect === 'function') {
@@ -1285,6 +1315,7 @@ plugin.init = async function (params) {
       res.json({
         status: 'ok',
         plugin: 'nodebb-plugin-sunbird-api',
+        version: '2.0.5',
         timestamp: new Date().toISOString(),
         nodebbVersion: process.env.npm_package_version || 'unknown',
         database: dbType,
